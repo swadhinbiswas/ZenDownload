@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=ZenDownload
+GenericName=Download Manager
+Comment=Fast modern download manager
+Exec=zendownload %u
+Icon=com.zendownload.app
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;Download;
+MimeType=application/x-bittorrent;application/x-rar-compressed;application/zip;application/x-7z-compressed;application/x-tar;video/mp4;video/x-matroska;audio/mpeg;
+StartupNotify=true
+StartupWMClass=ZenDownload
+Keywords=download;manager;torrent;video;audio;

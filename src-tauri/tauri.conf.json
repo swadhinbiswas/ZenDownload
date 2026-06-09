@@ -1,0 +1,109 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ZenDownload",
+  "version": "0.1.0",
+  "identifier": "com.zendownload.app",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ZenDownload",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true,
+        "label": "main"
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**", "$DOWNLOAD/**", "/tmp/**"]
+      }
+    },
+    "trayIcon": {
+      "id": "main-tray",
+      "iconPath": "icons/128x128.png",
+      "iconAsTemplate": false,
+      "menuOnLeftClick": false,
+      "tooltip": "ZenDownload"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/256x256.png",
+      "icons/512x512.png",
+      "icons/1024x1024.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Network",
+    "shortDescription": "Modern download manager",
+    "longDescription": "ZenDownload is a fast, modern download manager with support for HTTP, torrents, video extraction, format conversion, and a beautiful dark UI.",
+    "publisher": "ZenDownload",
+    "homepage": "https://zendownload.app",
+    "resources": [],
+    "externalBin": [],
+    "copyright": "Copyright © 2026 ZenDownload",
+    "licenseFile": "",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      },
+      "certificateThumbprint": "",
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["en-US"],
+        "displayLanguageSelector": false
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libayatana-appindicator3-1", "libnotify4"],
+        "section": "network",
+        "priority": "optional",
+        "changelog": "",
+        "files": {}
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": []
+    }
+  }
+}

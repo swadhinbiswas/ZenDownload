@@ -1,0 +1,26 @@
+[Desktop Entry]
+Name=ZenDownload
+GenericName=Download Manager
+Comment=Fast modern download manager
+Exec=zendownload %u
+Icon=zendownload
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;Download;
+MimeType=application/x-bittorrent;application/x-rar-compressed;application/zip;application/x-7z-compressed;application/x-tar;video/mp4;video/x-matroska;audio/mpeg;
+StartupNotify=true
+StartupWMClass=ZenDownload
+Keywords=download;manager;torrent;video;audio;
+Actions=show-window;pause-all;resume-all;
+
+[Desktop Action show-window]
+Name=Show Window
+Exec=zendownload --show
+
+[Desktop Action pause-all]
+Name=Pause All Downloads
+Exec=zendownload --pause-all
+
+[Desktop Action resume-all]
+Name=Resume All Downloads
+Exec=zendownload --resume-all

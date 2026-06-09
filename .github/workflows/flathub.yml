@@ -1,0 +1,129 @@
+name: Flathub Update
+
+# Submits the new version to the Flathub repository via PR.
+# Requires the following secrets:
+#   FLATHUB_REPO_TOKEN - Personal access token with repo scope to the flathub repo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to submit to Flathub (e.g. 0.2.0)'
+        required: true
+        default: '0.2.0'
+
+env:
+  APP_ID: com.zendownload.app
+  FLATHUB_REPO: ${{ vars.FLATHUB_REPO || 'flathub/com.zendownload.app' }}
+
+jobs:
+  update-flathub:
+    name: Submit to Flathub
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building Flathub update for: $VERSION"
+
+      - name: Install flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Install SDKs
+        run: |
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y --user flathub \
+            org.freedesktop.Platform//23.08 \
+            org.freedesktop.Sdk//23.08 \
+            org.freedesktop.Sdk.Extension.rust-stable//23.08 \
+            org.freedesktop.Sdk.Extension.node20//23.08
+
+      - name: Build Flatpak
+        run: |
+          cd flatpak
+          flatpak-builder --repo=repo --force-clean build-dir com.zendownload.app.json
+          flatpak build-bundle repo "ZenDownload-${{ steps.v.outputs.version }}.flatpak" \
+            --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo ${{ env.APP_ID }}
+
+      - name: Generate OSTree delta
+        run: |
+          cd flatpak
+          SHA=$(sha256sum "ZenDownload-${{ steps.v.outputs.version }}.flatpak" | awk '{print $1}')
+          SIZE=$(stat -c %s "ZenDownload-${{ steps.v.outputs.version }}.flatpak")
+          echo "Flatpak SHA: $SHA"
+          echo "Flatpak SIZE: $SIZE"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Clone Flathub repo
+        env:
+          GH_TOKEN: ${{ secrets.FLATHUB_REPO_TOKEN }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${FLATHUB_REPO}.git" flathub-repo
+          cd flathub-repo
+
+      - name: Update Flathub files
+        run: |
+          cd flathub-repo
+
+          # Copy updated manifest
+          cp ../flatpak/com.zendownload.app.json .
+
+          # Copy metainfo
+          cp ../flatpak/com.zendownload.app.metainfo.xml .
+
+          # Update sha256 in the metainfo release notes
+          SHA="${{ steps.v.outputs.sha256 }}"
+          # Update release info via jq/sed if needed
+          ls -la
+
+      - name: Commit and push
+        env:
+          GH_TOKEN: ${{ secrets.FLATHUB_REPO_TOKEN }}
+        run: |
+          cd flathub-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "update-${{ steps.v.outputs.version }}"
+          git add com.zendownload.app.json com.zendownload.app.metainfo.xml
+          git commit -m "Update ZenDownload to ${{ steps.v.outputs.version }}" || echo "No changes"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${FLATHUB_REPO}.git" "update-${{ steps.v.outputs.version }}"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.FLATHUB_REPO_TOKEN }}
+        run: |
+          cd flathub-repo
+          gh pr create \
+            --title "Update ZenDownload to ${{ steps.v.outputs.version }}" \
+            --body "Automated update from upstream release.
+
+          Version: ${{ steps.v.outputs.version }}
+          Source: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.v.outputs.version }}
+
+          This PR updates the Flatpak manifest to track the new release." \
+            --base master \
+            --head "update-${{ steps.v.outputs.version }}" \
+            --repo "${{ env.FLATHUB_REPO }}" || echo "PR creation skipped or already exists"
+
+      - name: Upload Flatpak as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zendownload-flatpak-update
+          path: flatpak/*.flatpak

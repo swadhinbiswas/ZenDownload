@@ -1,0 +1,412 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.2.0)'
+        required: true
+        default: '0.2.0'
+      draft:
+        description: 'Create as draft release'
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark as prerelease'
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  APP_NAME: ZenDownload
+  APP_IDENTIFIER: com.zendownload.app
+
+jobs:
+  # ============= Compute Version =============
+  version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      is_prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Building version: $VERSION"
+
+  # ============= Linux (deb + AppImage) =============
+  linux:
+    name: Linux (.deb + AppImage)
+    needs: version
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libnotify-dev \
+            patchelf \
+            file \
+            desktop-file-utils \
+            fakeroot \
+            rpm
+
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+
+      - name: Build Tauri (deb + AppImage)
+        run: bun run tauri build --bundles deb,appimage
+
+      - name: List build outputs
+        run: ls -laR src-tauri/target/release/bundle/
+
+      - name: Rename .deb for distribution
+        run: |
+          cd src-tauri/target/release/bundle/deb
+          ls
+          for f in *.deb; do
+            mv "$f" "${APP_NAME}_${{ needs.version.outputs.version }}_amd64.deb" 2>/dev/null || true
+          done
+          ls -la
+
+      - name: Rename AppImage for distribution
+        run: |
+          cd src-tauri/target/release/bundle/appimage
+          ls
+          for f in *.AppImage; do
+            mv "$f" "${APP_NAME}-${{ needs.version.outputs.version }}-x86_64.AppImage" 2>/dev/null || true
+          done
+          ls -la
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zendownload-linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/rpm/*.rpm
+          if-no-files-found: warn
+
+  # ============= Linux ARM64 (Raspberry Pi, etc.) =============
+  linux-arm64:
+    name: Linux ARM64 (.deb)
+    needs: version
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install cross-compile deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libnotify-dev
+
+      - name: Add aarch64 target
+        working-directory: src-tauri
+        run: rustup target add aarch64-unknown-linux-gnu
+
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+
+      - name: Build Tauri (ARM64 deb)
+        run: |
+          bun run tauri build \
+            --target aarch64-unknown-linux-gnu \
+            --bundles deb
+
+      - name: Rename ARM64 .deb
+        run: |
+          cd src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb 2>/dev/null || \
+          cd src-tauri/target/release/bundle/deb
+          for f in *.deb; do
+            mv "$f" "${APP_NAME}_${{ needs.version.outputs.version }}_arm64.deb" 2>/dev/null || true
+          done
+          ls -la
+
+      - name: Upload ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zendownload-linux-arm64
+          path: |
+            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb
+          if-no-files-found: warn
+
+  # ============= Windows (x64 + arm64) =============
+  windows:
+    name: Windows (${{ matrix.target }})
+    needs: version
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            arch: x64
+          - target: aarch64-pc-windows-msvc
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Rust target
+        working-directory: src-tauri
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+
+      - name: Build Tauri (Windows)
+        run: bun run tauri build --target ${{ matrix.target }} --bundles msi,nsis
+
+      - name: Rename Windows installers
+        shell: bash
+        run: |
+          cd src-tauri/target/${{ matrix.target }}/release/bundle/msi
+          for f in *.msi; do mv "$f" "${APP_NAME}-${{ needs.version.outputs.version }}-${{ matrix.arch }}.msi" 2>/dev/null || true; done
+          cd ../nsis
+          for f in *.exe; do mv "$f" "${APP_NAME}-${{ needs.version.outputs.version }}-${{ matrix.arch }}-setup.exe" 2>/dev/null || true; done
+          ls -laR ../
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zendownload-windows-${{ matrix.arch }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+
+  # ============= macOS (universal: x64 + arm64) =============
+  macos:
+    name: macOS (${{ matrix.target }})
+    needs: version
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+          - target: x86_64-apple-darwin
+            arch: x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Rust target
+        working-directory: src-tauri
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+
+      - name: Build Tauri (macOS .app + .dmg)
+        run: bun run tauri build --target ${{ matrix.target }} --bundles app,dmg
+
+      - name: Rename macOS artifacts
+        shell: bash
+        run: |
+          cd src-tauri/target/${{ matrix.target }}/release/bundle/macos
+          ls
+          for f in *.app; do
+            [ -d "$f" ] && mv "$f" "${APP_NAME}-${{ needs.version.outputs.version }}-${{ matrix.arch }}.app"
+          done
+          cd ../dmg
+          for f in *.dmg; do mv "$f" "${APP_NAME}-${{ needs.version.outputs.version }}-${{ matrix.arch }}.dmg" 2>/dev/null || true; done
+          ls -laR ../
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zendownload-macos-${{ matrix.arch }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: warn
+
+  # ============= Build Flatpak =============
+  flatpak:
+    name: Flatpak (x86_64)
+    needs: version
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install org.freedesktop.Platform
+        run: |
+          flatpak install -y --user flathub \
+            org.freedesktop.Platform//23.08 \
+            org.freedesktop.Sdk//23.08 \
+            org.freedesktop.Sdk.Extension.rust-stable//23.08 \
+            org.freedesktop.Sdk.Extension.node20//23.08
+
+      - name: Build Flatpak
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          cd flatpak
+          flatpak-builder --repo=repo --force-clean build-dir com.zendownload.app.json
+          flatpak build-bundle repo "ZenDownload-${VERSION}.flatpak" --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo com.zendownload.app
+
+      - name: Upload Flatpak
+        uses: actions/upload-artifact@v4
+        with:
+          name: zendownload-flatpak
+          path: flatpak/*.flatpak
+          if-no-files-found: warn
+
+  # ============= Publish Release =============
+  publish:
+    name: Publish GitHub Release
+    needs: [version, linux, linux-arm64, windows, macos, flatpak]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: |
+          echo "=== All artifacts ==="
+          find artifacts -type f | sort
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: |
+          find . -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.app" -o -name "*.flatpak" -o -name "*.rpm" \) -print0 | \
+            xargs -0 -I {} sh -c 'echo "$(sha256sum {} | awk "{print \$1}")  $(basename {})"' > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ env.APP_NAME }} ${{ needs.version.outputs.version }}"
+          draft: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.draft || false }}
+          prerelease: ${{ needs.version.outputs.is_prerelease == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease) || false }}
+          generate_release_notes: true
+          body: |
+            ## ${{ env.APP_NAME }} ${{ needs.version.outputs.version }}
+
+            ### Downloads
+
+            | Platform | Format | File |
+            |----------|--------|------|
+            | **Linux x86_64** | Debian | `${{ env.APP_NAME }}_${{ needs.version.outputs.version }}_amd64.deb` |
+            | **Linux x86_64** | AppImage | `${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-x86_64.AppImage` |
+            | **Linux ARM64** | Debian | `${{ env.APP_NAME }}_${{ needs.version.outputs.version }}_arm64.deb` |
+            | **Windows x64** | MSI | `${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-x64.msi` |
+            | **Windows x64** | NSIS Setup | `${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-x64-setup.exe` |
+            | **Windows ARM64** | MSI | `${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-arm64.msi` |
+            | **macOS Apple Silicon** | DMG | `${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-arm64.dmg` |
+            | **macOS Intel** | DMG | `${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-x64.dmg` |
+            | **Linux** | Flatpak | `ZenDownload-${{ needs.version.outputs.version }}.flatpak` |
+
+            ### Installation
+
+            **Linux (Debian/Ubuntu):**
+            ```bash
+            sudo dpkg -i ${{ env.APP_NAME }}_${{ needs.version.outputs.version }}_amd64.deb
+            sudo apt-get install -f
+            ```
+
+            **Linux (AppImage):**
+            ```bash
+            chmod +x ${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-x86_64.AppImage
+            ./${{ env.APP_NAME }}-${{ needs.version.outputs.version }}-x86_64.AppImage
+            ```
+
+            **Linux (Flatpak):**
+            ```bash
+            flatpak install ./ZenDownload-${{ needs.version.outputs.version }}.flatpak
+            ```
+
+            **Windows:** Run the MSI or NSIS setup installer.
+
+            **macOS:** Open the DMG and drag the app to Applications.
+
+            ### Verify
+
+            Check the SHA256SUMS.txt against your downloaded file:
+            ```bash
+            sha256sum -c SHA256SUMS.txt
+            ```
+          files: |
+            artifacts/**/*.deb
+            artifacts/**/*.AppImage
+            artifacts/**/*.msi
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.app
+            artifacts/**/*.flatpak
+            artifacts/**/*.rpm
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

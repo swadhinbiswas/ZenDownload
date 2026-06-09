@@ -1,0 +1,89 @@
+{
+  "app-id": "com.zendownload.app",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "23.08",
+  "sdk": "org.freedesktop.Sdk",
+  "sdk-extension": [
+    "org.freedesktop.Sdk.Extension.rust-stable",
+    "org.freedesktop.Sdk.Extension.node20"
+  ],
+  "command": "zendownload",
+  "rename-desktop-file": "zendownload.desktop",
+  "rename-icon": "com.zendownload.app",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--socket=pulseaudio",
+    "--socket=session-bus",
+    "--share=network",
+    "--filesystem=home",
+    "--filesystem=download",
+    "--filesystem=xdg-download",
+    "--filesystem=xdg-music",
+    "--filesystem=xdg-videos",
+    "--filesystem=xdg-pictures",
+    "--filesystem=xdg-documents",
+    "--filesystem=xdg-desktop",
+    "--filesystem=/media",
+    "--filesystem=/mnt",
+    "--talk-name=org.freedesktop.Notifications",
+    "--talk-name=org.kde.StatusNotifierWatcher",
+    "--own-name=org.kde.StatusNotifierItem-1-2",
+    "--own-name=org.mpris.MediaPlayer2.zendownload",
+    "--env=DCONF_USER_CONFIG_DIR=.config/dconf"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "/share/aclocal",
+    "/share/doc",
+    "/share/gir-1.0",
+    "/share/groff",
+    "/share/gtk-doc",
+    "/share/info",
+    "/share/locale",
+    "/share/man",
+    "/share/vala",
+    "/share/zoneinfo",
+    "*.a",
+    "*.la",
+    "*.pc",
+    "*.h",
+    "*.cmake",
+    "*.m4"
+  ],
+  "modules": [
+    {
+      "name": "zendownload",
+      "buildsystem": "simple",
+      "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin:/app/bin"
+      },
+      "build-commands": [
+        "cd /run/build/zendownload",
+        "npm install --frozen-lockfile",
+        "npm run tauri -- build --bundles deb",
+        "install -Dm755 src-tauri/target/release/zendownload /app/bin/zendownload",
+        "install -Dm644 src-tauri/icons/icon.png /app/share/icons/hicolor/512x512/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/256x256.png /app/share/icons/hicolor/256x256/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/128x128.png /app/share/icons/hicolor/128x128/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/96x96.png /app/share/icons/hicolor/96x96/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/72x72.png /app/share/icons/hicolor/72x72/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/64x64.png /app/share/icons/hicolor/64x64/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/48x48.png /app/share/icons/hicolor/48x48/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/32x32.png /app/share/icons/hicolor/32x32/apps/com.zendownload.app.png",
+        "install -Dm644 src-tauri/icons/linux/16x16.png /app/share/icons/hicolor/16x16/apps/com.zendownload.app.png",
+        "install -Dm644 com.zendownload.app.desktop /app/share/applications/com.zendownload.app.desktop",
+        "install -Dm644 flatpak/com.zendownload.app.metainfo.xml /app/share/metainfo/com.zendownload.app.metainfo.xml",
+        "find /app/bin -type f -exec strip --strip-unneeded {} \\; || true"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": ".."
+        }
+      ]
+    }
+  ]
+}

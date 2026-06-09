@@ -1,0 +1,71 @@
+name: Tauri Updater
+
+# Generates `latest.json` update metadata for Tauri auto-updater.
+# Should be run AFTER release.yml publishes the binaries.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to generate updater artifacts for'
+        required: true
+        default: '0.1.0'
+      tag:
+        description: 'Git tag for the release'
+        required: true
+        default: 'v0.1.0'
+
+env:
+  APP_NAME: ZenDownload
+
+jobs:
+  generate-updater-metadata:
+    name: Generate Updater JSON
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.inputs.run_id || '' }}
+
+      - name: List downloaded artifacts
+        run: find artifacts -type f | sort
+
+      - name: Generate latest.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          TAG="${{ github.event.inputs.tag }}"
+          BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          mkdir -p out
+
+          # Linux x86_64
+          LINUX_DEB=$(find artifacts -name "${APP_NAME}_${VERSION}_amd64.deb" | head -1)
+          LINUX_APPIMAGE=$(find artifacts -name "${APP_NAME}-${VERSION}-x86_64.AppImage" | head -1)
+          WIN_MSI=$(find artifacts -name "${APP_NAME}-${VERSION}-x64.msi" | head -1)
+          WIN_NSI=$(find artifacts -name "${APP_NAME}-${VERSION}-x64-setup.exe" | head -1)
+          MAC_ARM=$(find artifacts -name "${APP_NAME}-${VERSION}-arm64.dmg" | head -1)
+          MAC_X64=$(find artifacts -name "${APP_NAME}-${VERSION}-x64.dmg" | head -1)
+
+          # Compute signatures (in real workflow, tauri-action does this)
+          # For now, generate a placeholder structure
+          cat > out/latest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "notes": "See https://github.com/${{ github.repository }}/releases/tag/${TAG}",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {}
+          }
+          EOF
+          cat out/latest.json
+
+      - name: Upload updater metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-updater-metadata
+          path: out/latest.json

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.zendownload.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>ZenDownload</name>
+  <summary>Fast, modern download manager</summary>
+  <description>
+    <p>
+      ZenDownload is a fast, modern download manager that aims to be the best
+      alternative to IDM and JDownloader. It supports HTTP, HTTPS, FTP, torrents,
+      video extraction from 1000+ sites, HLS/DASH streams, batch downloading,
+      link checking, format conversion, and site crawling.
+    </p>
+    <p>Key features:</p>
+    <ul>
+      <li>Multi-threaded accelerated downloads (up to 64 connections)</li>
+      <li>Torrent engine with full session restore</li>
+      <li>Video stream extraction via yt-dlp (YouTube, Twitter, TikTok, etc.)</li>
+      <li>Live TV streaming with 11,000+ IPTV channels</li>
+      <li>Batch URL import with category assignment</li>
+      <li>Built-in link checker (HTTP HEAD, file size, type detection)</li>
+      <li>Format converter (FFmpeg-based, 9 built-in presets)</li>
+      <li>Site crawler/grabber (BFS, file-type filtering, depth control)</li>
+      <li>System tray with pause/resume all, downloads folder quick access</li>
+      <li>Browser extension for Chrome/Edge/Firefox (manifest V3)</li>
+      <li>CLI and REST API for automation</li>
+      <li>Cross-platform: Windows, macOS, Linux (.deb, AppImage, Flatpak)</li>
+    </ul>
+  </description>
+  <categories>
+    <category>Network</category>
+    <category>FileTransfer</category>
+    <category>Download</category>
+  </categories>
+  <keywords>
+    <keyword>download</keyword>
+    <keyword>manager</keyword>
+    <keyword>torrent</keyword>
+    <keyword>video</keyword>
+    <keyword>audio</keyword>
+    <keyword>youtube</keyword>
+    <keyword>stream</keyword>
+    <keyword>batch</keyword>
+    <keyword>accelerator</keyword>
+  </keywords>
+  <launchable type="desktop-id">com.zendownload.app.desktop</launchable>
+  <url type="homepage">https://github.com/zendownload/zendownload</url>
+  <url type="bugtracker">https://github.com/zendownload/zendownload/issues</url>
+  <developer_name>ZenDownload Team</developer_name>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/zendownload/zendownload/main/screenshots/main.png</image>
+      <caption>Main download list with batch operations</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/zendownload/zendownload/main/screenshots/site-grabber.png</image>
+      <caption>Site Grabber / Web Crawler</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/zendownload/zendownload/main/screenshots/live-tv.png</image>
+      <caption>Live TV with IPTV channels</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/zendownload/zendownload/main/screenshots/settings.png</image>
+      <caption>Settings with theme customization</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.0" date="2026-06-07">
+      <description>
+        <p>First public release.</p>
+        <ul>
+          <li>Multi-threaded HTTP/FTP downloads with up to 64 parallel connections</li>
+          <li>Torrent engine with full session persistence</li>
+          <li>Video stream extraction via yt-dlp</li>
+          <li>Live TV streaming (IPTV)</li>
+          <li>Batch URL import, site crawler, link checker</li>
+          <li>Format conversion (FFmpeg presets)</li>
+          <li>System tray with bulk pause/resume</li>
+          <li>Browser extension (Chrome/Edge/Firefox)</li>
+          <li>CLI and REST API</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-cartoon">none</content_attribute>
+    <content_attribute id="violence-fantasy">none</content_attribute>
+    <content_attribute id="violence-realistic">none</content_attribute>
+    <content_attribute id="violence-bloodshed">none</content_attribute>
+    <content_attribute id="violence-sexual">none</content_attribute>
+    <content_attribute id="drugs-alcohol">none</content_attribute>
+    <content_attribute id="drugs-narcotics">none</content_attribute>
+    <content_attribute id="drugs-tobacco">none</content_attribute>
+    <content_attribute id="sex-nudity">none</content_attribute>
+    <content_attribute id="sex-themes">none</content_attribute>
+    <content_attribute id="language-profanity">none</content_attribute>
+    <content_attribute id="language-humor">none</content_attribute>
+    <content_attribute id="language-discrimination">none</content_attribute>
+    <content_attribute id="social-chat">none</content_attribute>
+    <content_attribute id="social-info">none</content_attribute>
+    <content_attribute id="social-audio">none</content_attribute>
+    <content_attribute id="social-location">none</content_attribute>
+    <content_attribute id="social-contacts">none</content_attribute>
+    <content_attribute id="money-purchasing">none</content_attribute>
+    <content_attribute id="money-gambling">none</content_attribute>
+  </content_rating>
+  <requires>
+    <internet>always</internet>
+  </requires>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <display_length compare="gt">800</display_length>
+  </recommends>
+</component>
