@@ -63,9 +63,15 @@ export function FilePreview({ filePath, fileName, fileSize, mimeType, onClose }:
     setLoading(true);
 
     if (t === 'video' || t === 'audio' || t === 'image') {
-      const url = `asset://localhost/${encodeURIComponent(filePath)}`;
-      setPreviewUrl(url);
-      setLoading(false);
+      invoke<string>('serve_file', { path: filePath })
+        .then((dataUrl) => {
+          setPreviewUrl(dataUrl);
+          setLoading(false);
+        })
+        .catch((e) => {
+          setError(String(e));
+          setLoading(false);
+        });
     } else if (t === 'text' || t === 'code') {
       invoke<string>('read_text_file', { path: filePath, maxBytes: 200_000 })
         .then((content) => {
@@ -155,8 +161,8 @@ export function FilePreview({ filePath, fileName, fileSize, mimeType, onClose }:
               <div className="flex items-center justify-center h-full text-zinc-500 text-sm">No content</div>
             )}
           </div>
-        ) : fileType === 'pdf' ? (
-          <iframe src={`asset://localhost/${encodeURIComponent(filePath)}`} className="w-full h-full bg-white" title={fileName} />
+        ) : fileType === 'pdf' && previewUrl ? (
+          <iframe src={previewUrl} className="w-full h-full bg-white" title={fileName} />
         ) : fileType === 'archive' ? (
           <ArchivePreview filePath={filePath} fileName={fileName} />
         ) : (

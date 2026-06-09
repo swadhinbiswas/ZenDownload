@@ -789,6 +789,47 @@ async fn read_text_file(path: String, max_bytes: usize) -> Result<String, String
     String::from_utf8(buffer).map_err(|e| format!("Not valid UTF-8: {}", e))
 }
 
+#[tauri::command]
+async fn serve_file(path: String) -> Result<String, String> {
+    use std::io::Read;
+    let mut file = std::fs::File::open(&path).map_err(|e| format!("Cannot open file: {}", e))?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).map_err(|e| format!("Cannot read file: {}", e))?;
+
+    let mime = match std::path::Path::new(&path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase()
+        .as_str()
+    {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
+        "avif" => "image/avif",
+        "mp4" => "video/mp4",
+        "webm" => "video/webm",
+        "mkv" => "video/x-matroska",
+        "mov" => "video/quicktime",
+        "avi" => "video/x-msvideo",
+        "mp3" => "audio/mpeg",
+        "flac" => "audio/flac",
+        "wav" => "audio/wav",
+        "ogg" => "audio/ogg",
+        "m4a" => "audio/mp4",
+        "pdf" => "application/pdf",
+        _ => "application/octet-stream",
+    };
+
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&buffer);
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
 // ============== User Custom IPTV Playlists ==============
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -1577,6 +1618,7 @@ pub fn run() {
             get_recent_analytics,
             // File Preview
             read_text_file,
+            serve_file,
             list_archive,
             // API Server
             get_api_server_status,
