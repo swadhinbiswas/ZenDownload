@@ -42,7 +42,7 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -54,7 +54,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "category": "Network",
+    "category": "Utility",
     "shortDescription": "Modern download manager",
     "longDescription": "ZenDownload is a fast, modern download manager with support for HTTP, torrents, video extraction, format conversion, and a beautiful dark UI.",
     "publisher": "ZenDownload",
@@ -84,7 +84,6 @@
         "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libayatana-appindicator3-1", "libnotify4"],
         "section": "network",
         "priority": "optional",
-        "changelog": "",
         "files": {}
       },
       "appimage": {
