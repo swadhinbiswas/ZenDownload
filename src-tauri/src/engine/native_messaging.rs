@@ -16,15 +16,6 @@ pub struct NativeMessage {
     pub timestamp: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BrowserSetupResult {
-    pub browser: String,
-    pub name: String,
-    pub native_messaging: bool,
-    pub extension_loaded: bool,
-    pub message: String,
-}
-
 pub fn read_message<R: BufRead>(reader: &mut R) -> Result<Option<NativeMessage>, String> {
     let mut header = [0u8; 4];
     match reader.read_exact(&mut header) {
@@ -99,11 +90,8 @@ pub fn get_native_messaging_manifest_path(browser: &str) -> String {
                 let home = std::env::var("HOME").unwrap_or_else(|_| "~".into());
                 format!("{}/Library/Application Support/Google/Chrome/NativeMessagingHosts/{}", home, filename)
             } else if cfg!(target_os = "windows") {
-                format!(
-                    "{}ZenDownload\\manifests\\{}",
-                    std::env::var("PROGRAMFILES").unwrap_or_else(|_| "C:\\Program Files\\".into()),
-                    filename
-                )
+                format!("{}ZenDownload\\manifests\\{}",
+                    std::env::var("PROGRAMFILES").unwrap_or_else(|_| "C:\\Program Files\\".into()), filename)
             } else {
                 format!("/etc/opt/chrome/native-messaging-hosts/{}", filename)
             }
@@ -117,23 +105,14 @@ pub fn get_native_messaging_manifest_path(browser: &str) -> String {
         }
         "firefox" => {
             if cfg!(target_os = "macos") {
-                format!(
-                    "{}/Library/Application Support/Mozilla/NativeMessagingHosts/{}",
-                    std::env::var("HOME").unwrap_or_else(|_| "~".into()),
-                    filename
-                )
+                format!("{}/Library/Application Support/Mozilla/NativeMessagingHosts/{}",
+                    std::env::var("HOME").unwrap_or_else(|_| "~".into()), filename)
             } else if cfg!(target_os = "windows") {
-                format!(
-                    "{}ZenDownload\\manifests\\{}",
-                    std::env::var("PROGRAMFILES").unwrap_or_else(|_| "C:\\Program Files\\".into()),
-                    filename
-                )
+                format!("{}ZenDownload\\manifests\\{}",
+                    std::env::var("PROGRAMFILES").unwrap_or_else(|_| "C:\\Program Files\\".into()), filename)
             } else {
-                format!(
-                    "{}/.mozilla/native-messaging-hosts/{}",
-                    std::env::var("HOME").unwrap_or_else(|_| "~".into()),
-                    filename
-                )
+                format!("{}/.mozilla/native-messaging-hosts/{}",
+                    std::env::var("HOME").unwrap_or_else(|_| "~".into()), filename)
             }
         }
         _ => filename.to_string(),
@@ -169,141 +148,4 @@ pub fn build_manifest_json(browser: &str) -> String {
         }
     }
     serde_json::to_string_pretty(&manifest).unwrap_or_default()
-}
-
-pub fn find_extension_dir() -> Option<std::path::PathBuf> {
-    let candidates = vec![
-        std::env::current_exe().ok()?.parent()?.join("extension"),
-        std::env::current_exe().ok()?.parent()?.parent()?.join("extension"),
-        std::path::PathBuf::from("extension"),
-    ];
-    for path in candidates {
-        if path.join("manifest.json").exists() {
-            return Some(path);
-        }
-    }
-    None
-}
-
-pub fn detect_browsers() -> Vec<(&'static str, &'static str, Vec<String>)> {
-    let mut browsers: Vec<(&'static str, &'static str, Vec<String>)> = Vec::new();
-    if cfg!(target_os = "linux") {
-        let checks = vec![
-            ("chrome", "Google Chrome", vec!["google-chrome", "google-chrome-stable"]),
-            ("chromium", "Chromium", vec!["chromium", "chromium-browser"]),
-            ("firefox", "Firefox", vec!["firefox", "firefox-esr"]),
-            ("edge", "Microsoft Edge", vec!["microsoft-edge", "microsoft-edge-stable"]),
-        ];
-        for (name, id, exes) in checks {
-            for exe in &exes {
-                if which::which(exe).is_ok() {
-                    browsers.push((id, name, exes.into_iter().map(String::from).collect()));
-                    break;
-                }
-            }
-        }
-    } else if cfg!(target_os = "macos") {
-        let checks = vec![
-            ("chrome", "Google Chrome", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
-            ("firefox", "Firefox", "/Applications/Firefox.app/Contents/MacOS/firefox"),
-            ("edge", "Microsoft Edge", "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
-        ];
-        for (id, name, path) in checks {
-            if std::path::Path::new(path).exists() {
-                browsers.push((id, name, vec![path.to_string()]));
-            }
-        }
-    } else if cfg!(target_os = "windows") {
-        let pf86 = std::env::var("PROGRAMFILES(X86)").unwrap_or_else(|_| "C:\\Program Files (x86)".into());
-        let la = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Local".into());
-        let checks = vec![
-            ("chrome", "Google Chrome", vec![
-                format!("{}\\Google\\Chrome\\Application\\chrome.exe", pf86),
-                format!("{}\\Google\\Chrome\\Application\\chrome.exe", la),
-            ]),
-            ("edge", "Microsoft Edge", vec![
-                format!("{}\\Microsoft\\Edge\\Application\\msedge.exe", pf86),
-            ]),
-            ("firefox", "Firefox", vec![
-                format!("{}\\Mozilla Firefox\\firefox.exe", pf86),
-            ]),
-        ];
-        for (id, name, paths) in checks {
-            for p in &paths {
-                if std::path::Path::new(p).exists() {
-                    browsers.push((id, name, paths));
-                    break;
-                }
-            }
-        }
-    }
-    browsers
-}
-
-pub fn install_native_messaging_host(browser: &str) -> Result<String, String> {
-    let manifest_path = get_native_messaging_manifest_path(browser);
-    let path = std::path::Path::new(&manifest_path);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create {}: {}", parent.display(), e))?;
-    }
-    let json = build_manifest_json(browser);
-    std::fs::write(path, &json).map_err(|e| format!("Failed to write manifest: {}", e))?;
-    Ok(manifest_path)
-}
-
-pub fn launch_browser_with_extension(browser_exe: &str, extension_path: &str) -> Result<(), String> {
-    let ext_path = std::path::Path::new(extension_path);
-    let absolute = if ext_path.is_absolute() {
-        ext_path.to_path_buf()
-    } else {
-        std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .parent()
-            .map(|p| p.join(ext_path))
-            .unwrap_or(ext_path.to_path_buf())
-    };
-    if !absolute.join("manifest.json").exists() {
-        return Err(format!("Extension not found at {}", absolute.display()));
-    }
-    std::process::Command::new(browser_exe)
-        .arg(format!("--load-extension={}", absolute.to_string_lossy()))
-        .arg("--no-first-run")
-        .arg("--new-window")
-        .arg("about:blank")
-        .spawn()
-        .map_err(|e| format!("Failed to launch {}: {}", browser_exe, e))?;
-    Ok(())
-}
-
-pub fn setup_browser(browser_id: &str, browser_name: &str, exes: &[String]) -> BrowserSetupResult {
-    let nm_result = install_native_messaging_host(browser_id);
-    let native_messaging = nm_result.is_ok();
-    let mut extension_loaded = false;
-
-    if let Some(ref ext_path) = find_extension_dir() {
-        for exe in exes {
-            if let Ok(path) = which::which(exe) {
-                if launch_browser_with_extension(path.to_str().unwrap_or(""), ext_path.to_str().unwrap_or("")).is_ok() {
-                    extension_loaded = true;
-                    break;
-                }
-            }
-        }
-    }
-
-    let msg = if native_messaging && extension_loaded {
-        format!("{} integration complete. Extension loaded.", browser_name)
-    } else if native_messaging {
-        format!("{} native messaging registered. Open chrome://extensions, enable Developer mode, and 'Load unpacked' from the extension folder.", browser_name)
-    } else {
-        format!("Failed: {}", nm_result.unwrap_or_else(|e| e))
-    };
-
-    BrowserSetupResult {
-        browser: browser_id.to_string(),
-        name: browser_name.to_string(),
-        native_messaging,
-        extension_loaded,
-        message: msg,
-    }
 }

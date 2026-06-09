@@ -310,18 +310,6 @@ async fn get_native_messaging_manifest_path(browser: String) -> Result<String, S
     Ok(engine::native_messaging::get_native_messaging_manifest_path(&browser))
 }
 
-#[tauri::command]
-async fn setup_browser_extension() -> Result<Vec<engine::native_messaging::BrowserSetupResult>, String> {
-    let browsers = engine::native_messaging::detect_browsers();
-    if browsers.is_empty() {
-        return Err("No supported browsers found on this system.".to_string());
-    }
-    let results: Vec<engine::native_messaging::BrowserSetupResult> = browsers.into_iter()
-        .map(|(id, name, exes)| engine::native_messaging::setup_browser(id, name, &exes))
-        .collect();
-    Ok(results)
-}
-
 // ==================== PHASE 4.3: M3U/IPTV ====================
 
 #[tauri::command]
@@ -1496,7 +1484,6 @@ pub fn run() {
             // Phase 3.1: Native messaging
             get_native_messaging_manifest,
             get_native_messaging_manifest_path,
-            setup_browser_extension,
             // Phase 4.3: M3U
             import_m3u_playlist,
             parse_m3u_content,

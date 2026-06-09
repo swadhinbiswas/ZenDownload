@@ -59,4 +59,3 @@ sysinfo = "0.31"
 rand = "0.8"
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors"] }
-which = "7"
