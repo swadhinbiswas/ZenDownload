@@ -229,19 +229,21 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
           if-no-files-found: warn
 
-  # ============= macOS (universal: x64 + arm64) =============
+  # ============= macOS (x64 + arm64) =============
   macos:
     name: macOS (${{ matrix.target }})
     needs: version
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: aarch64-apple-darwin
             arch: arm64
+            runner: macos-latest
           - target: x86_64-apple-darwin
             arch: x64
+            runner: macos-13
     steps:
       - uses: actions/checkout@v4
 

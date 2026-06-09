@@ -99,8 +99,16 @@ jobs:
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
 
   macos-nightly:
-    name: macOS Nightly
+    name: macOS Nightly (${{ matrix.target }})
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+          - target: x86_64-apple-darwin
+            arch: x64
     steps:
       - uses: actions/checkout@v4
 
@@ -111,24 +119,28 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      - name: Install Rust target
+        working-directory: src-tauri
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install JS deps
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: bun run tauri build --bundles app,dmg
+        run: bun run tauri build --target ${{ matrix.target }} --bundles app,dmg
 
       - name: Rename
         shell: bash
         run: |
-          cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
-          for f in *.app; do mv "$f" "${APP_NAME}-nightly-$(date +%Y%m%d)-arm64.app" 2>/dev/null || true; done
+          cd src-tauri/target/${{ matrix.target }}/release/bundle/macos
+          for f in *.app; do mv "$f" "${APP_NAME}-nightly-$(date +%Y%m%d)-${{ matrix.arch }}.app" 2>/dev/null || true; done
           cd ../dmg
-          for f in *.dmg; do mv "$f" "${APP_NAME}-nightly-$(date +%Y%m%d)-arm64.dmg" 2>/dev/null || true; done
+          for f in *.dmg; do mv "$f" "${APP_NAME}-nightly-$(date +%Y%m%d)-${{ matrix.arch }}.dmg" 2>/dev/null || true; done
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: zendownload-nightly-macos
+          name: zendownload-nightly-macos-${{ matrix.arch }}
           path: |
-            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
-            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg

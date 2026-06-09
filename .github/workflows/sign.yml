@@ -98,15 +98,17 @@ jobs:
   # ============= macOS Notarization =============
   macos-signed:
     name: macOS Notarized (${{ matrix.target }})
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: aarch64-apple-darwin
             arch: arm64
+            runner: macos-latest
           - target: x86_64-apple-darwin
             arch: x64
+            runner: macos-13
     steps:
       - uses: actions/checkout@v4
 
