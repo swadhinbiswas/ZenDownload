@@ -15,15 +15,16 @@ setInterval(() => {
 
 // Try native messaging connection
 function tryNativeConnect() {
+  if (nativePort) return true;
   try {
-    nativePort = chrome.runtime.connectNative(NATIVE_HOST);
-    nativePort.onMessage.addListener((msg) => {
-      console.log('[NativeMessaging] Received:', msg);
-    });
-    nativePort.onDisconnect.addListener(() => {
-      console.log('[NativeMessaging] Disconnected');
+    const port = chrome.runtime.connectNative(NATIVE_HOST);
+    port.onMessage.addListener((msg) => console.log('[NativeMessaging] Received:', msg));
+    port.onDisconnect.addListener(() => {
+      // Suppress runtime.lastError when host is not installed
+      void chrome.runtime.lastError;
       nativePort = null;
     });
+    nativePort = port;
     return true;
   } catch {
     nativePort = null;

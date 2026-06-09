@@ -1,9 +1,7 @@
 {
-  "allowed_extensions": [
-    "com.zendownload.extension@browser"
-  ],
-  "description": "ZenDownload Native Messaging Host",
   "name": "com.zendownload.host",
-  "path": "/home/swadhin/ZenDownload/zendownload/src-tauri/target/debug/zendownload",
-  "type": "stdio"
+  "description": "ZenDownload Native Messaging Host",
+  "path": "/home/swadhin/ZenDownload/zendownload/src-tauri/target/release/zendownload",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://*/"]
 }
