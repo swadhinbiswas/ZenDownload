@@ -1,42 +1,32 @@
-// content.js - Injected into every page
-// Detects media, adds floating download button on hover, captures links
-
 (function() {
   'use strict';
 
-  // === State ===
   const state = {
     detectedFiles: new Map(),
     pageLinks: [],
     panelOpen: false,
     floatingButton: null,
+    scanInterval: null,
   };
 
-  // === File detection ===
-  const FILE_EXTENSIONS = /\.(zip|rar|7z|tar|gz|bz2|xxz|exe|msi|apk|dmg|iso|img|deb|rpm|pkg|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|epub|mobi|azw3|mp4|mkv|avi|webm|mov|flv|wmv|3gp|m4v|ts|m2ts|mp3|wav|flac|aac|ogg|m4a|opus|wma|jpg|jpeg|png|gif|svg|webp|bmp|torrent)(\?|#|$)/i;
+  const FILE_EXTENSIONS = /\.(zip|rar|7z|tar|gz|bz2|xz|exe|msi|apk|dmg|iso|img|deb|rpm|pkg|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|epub|mobi|azw3|mp4|mkv|avi|webm|mov|flv|wmv|3gp|m4v|ts|m2ts|mp3|wav|flac|aac|ogg|m4a|opus|wma|jpg|jpeg|png|gif|svg|webp|bmp|torrent)(\?|#|$)/i;
 
   function isFileLink(url) {
     try {
       const u = new URL(url);
       return FILE_EXTENSIONS.test(u.pathname + (u.search || ''));
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
   function extractFileName(url) {
     try {
       const u = new URL(url);
-      const path = u.pathname;
-      return decodeURIComponent(path.split('/').pop() || 'file');
-    } catch {
-      return 'file';
-    }
+      return decodeURIComponent(u.pathname.split('/').pop() || '') || 'file';
+    } catch { return 'file'; }
   }
 
-  // === Scan all links on page ===
   function scanPageLinks() {
-    const links = Array.from(document.querySelectorAll('a[href]')).map(a => {
+    state.pageLinks = Array.from(document.querySelectorAll('a[href]')).map(a => {
       const url = a.href;
       const isFile = isFileLink(url);
       return {
@@ -47,11 +37,19 @@
         file_size: null,
       };
     });
-    state.pageLinks = links;
-    return links;
+    return state.pageLinks;
   }
 
-  // === Listen for file detection events ===
+  // Deduplicate page links by URL
+  function dedupeLinks(links) {
+    const seen = new Set();
+    return links.filter(l => {
+      if (seen.has(l.url)) return false;
+      seen.add(l.url);
+      return true;
+    });
+  }
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.action) {
       case 'file-detected':
@@ -61,10 +59,11 @@
         showLinkPanel();
         break;
       case 'capture-all-links':
-        const files = state.pageLinks.filter(l => l.is_file);
+        const links = dedupeLinks(state.pageLinks.filter(l => l.is_file));
+        if (links.length === 0) return;
         chrome.runtime.sendMessage({
           action: 'send-batch',
-          urls: files.map(f => f.url),
+          urls: links.map(f => f.url),
           pageUrl: window.location.href,
         });
         break;
@@ -80,14 +79,13 @@
       if (!state.floatingButton) {
         state.floatingButton = document.createElement('div');
         state.floatingButton.className = 'zd-floating-btn';
-        state.floatingButton.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Download with ZenDownload</span>
-        `;
+        state.floatingButton.innerHTML = [
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">',
+          '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>',
+          '<polyline points="7 10 12 15 17 10"></polyline>',
+          '<line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+          '<span>Download with ZenDownload</span>',
+        ].join('');
         state.floatingButton.onclick = (e) => {
           e.stopPropagation();
           e.preventDefault();
@@ -105,84 +103,85 @@
         document.body.appendChild(state.floatingButton);
       }
       const rect = media.getBoundingClientRect();
-      state.floatingButton.style.top = `${rect.top + window.scrollY + 8}px`;
-      state.floatingButton.style.left = `${rect.left + window.scrollX + rect.width - 200}px`;
+      state.floatingButton.style.top = `${rect.top + 8}px`;
+      state.floatingButton.style.left = `${rect.left + rect.width - 200}px`;
       state.floatingButton.classList.add('zd-visible');
     };
 
     const hide = () => {
-      if (state.floatingButton) {
-        state.floatingButton.classList.remove('zd-visible');
-      }
+      if (state.floatingButton) state.floatingButton.classList.remove('zd-visible');
     };
 
     media.addEventListener('mouseenter', show);
     media.addEventListener('mouseleave', hide);
   }
 
-  // === Find media elements ===
   function scanForMedia() {
     document.querySelectorAll('video, audio').forEach(attachFloatingButton);
   }
 
-  // === Toast notification ===
   function showToast(message) {
+    const existing = document.querySelector('.zd-toast');
+    if (existing) existing.remove();
     const toast = document.createElement('div');
     toast.className = 'zd-toast';
     toast.textContent = message;
     document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('zd-toast-visible'), 10);
+    requestAnimationFrame(() => toast.classList.add('zd-toast-visible'));
     setTimeout(() => {
       toast.classList.remove('zd-toast-visible');
       setTimeout(() => toast.remove(), 300);
     }, 2500);
   }
 
-  // === Link Panel (slide-out) ===
+  // === Link Panel ===
   function showLinkPanel() {
     if (state.panelOpen) return;
     state.panelOpen = true;
-    scanPageLinks();
+    const allLinks = dedupeLinks(scanPageLinks());
+    const files = allLinks.filter(l => l.is_file);
+    const pages = allLinks.filter(l => !l.is_file);
 
     const panel = document.createElement('div');
     panel.className = 'zd-link-panel';
-    const files = state.pageLinks.filter(l => l.is_file);
-    const pages = state.pageLinks.filter(l => !l.is_file);
-
-    panel.innerHTML = `
-      <div class="zd-panel-header">
-        <div>
-          <h3>Page Links</h3>
-          <p>${state.pageLinks.length} total · ${files.length} files · ${pages.length} pages</p>
-        </div>
-        <button class="zd-panel-close" aria-label="Close">&times;</button>
-      </div>
-      <div class="zd-panel-filters">
-        <button class="zd-filter active" data-filter="all">All</button>
-        <button class="zd-filter" data-filter="files">Files</button>
-        <button class="zd-filter" data-filter="pages">Pages</button>
-        <button class="zd-panel-download-all">Download all files</button>
-      </div>
-      <div class="zd-panel-list"></div>
-    `;
+    panel.innerHTML = [
+      '<div class="zd-panel-header">',
+      '<div><h3>Page Links</h3><p>', allLinks.length, ' total · ', files.length, ' files · ', pages.length, ' pages</p></div>',
+      '<button class="zd-panel-close" aria-label="Close">&times;</button></div>',
+      '<div class="zd-panel-filters">',
+      '<button class="zd-filter active" data-filter="all">All</button>',
+      '<button class="zd-filter" data-filter="files">Files</button>',
+      '<button class="zd-filter" data-filter="pages">Pages</button>',
+      '<button class="zd-panel-download-all">Download all files</button></div>',
+      '<div class="zd-panel-list"></div>',
+    ].join('');
     document.body.appendChild(panel);
 
     const list = panel.querySelector('.zd-panel-list');
+
     function renderList(filter = 'all') {
-      const items = filter === 'files' ? files : filter === 'pages' ? pages : state.pageLinks;
-      list.innerHTML = items.length === 0
-        ? '<div class="zd-empty">No links found</div>'
-        : items.map(link => `
-            <div class="zd-link-item ${link.is_file ? 'zd-file' : 'zd-page'}">
-              <input type="checkbox" ${link.is_file ? '' : 'disabled'} data-url="${escapeHtml(link.url)}" ${link.is_file ? 'checked' : ''}>
-              <div class="zd-link-info">
-                <div class="zd-link-text">${escapeHtml(link.text || link.url)}</div>
-                <div class="zd-link-url">${escapeHtml(link.url)}</div>
-              </div>
-              ${link.is_file ? `<span class="zd-link-type">${link.file_type || ''}</span>` : '<span class="zd-link-external">↗</span>'}
-            </div>
-          `).join('');
+      const items = filter === 'files' ? files : filter === 'pages' ? pages : allLinks;
+      if (items.length === 0) {
+        list.innerHTML = '<div class="zd-empty">No links found</div>';
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      for (const link of items) {
+        const div = document.createElement('div');
+        div.className = `zd-link-item ${link.is_file ? 'zd-file' : 'zd-page'}`;
+        div.innerHTML = [
+          '<input type="checkbox"', link.is_file ? ` data-url="${escapeAttr(link.url)}" checked` : ' disabled', '>',
+          '<div class="zd-link-info">',
+          '<div class="zd-link-text">', escapeHtml(link.text || link.url), '</div>',
+          '<div class="zd-link-url">', escapeHtml(link.url), '</div></div>',
+          link.is_file ? `<span class="zd-link-type">${link.file_type || ''}</span>` : '<span class="zd-link-external">\u2197</span>',
+        ].join('');
+        fragment.appendChild(div);
+      }
+      list.innerHTML = '';
+      list.appendChild(fragment);
     }
+
     renderList();
 
     panel.querySelector('.zd-panel-close').onclick = () => {
@@ -198,16 +197,9 @@
     });
     panel.querySelector('.zd-panel-download-all').onclick = () => {
       const checked = list.querySelectorAll('input[type=checkbox]:checked');
-      const urls = Array.from(checked).map(c => c.dataset.url);
-      if (urls.length === 0) {
-        showToast('No files selected');
-        return;
-      }
-      chrome.runtime.sendMessage({
-        action: 'send-batch',
-        urls,
-        pageUrl: window.location.href,
-      });
+      const urls = Array.from(checked).map(c => c.dataset.url).filter(Boolean);
+      if (urls.length === 0) { showToast('No files selected'); return; }
+      chrome.runtime.sendMessage({ action: 'send-batch', urls, pageUrl: window.location.href });
       showToast(`Sending ${urls.length} files to ZenDownload`);
     };
 
@@ -215,24 +207,20 @@
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  // === Init ===
   function init() {
     scanForMedia();
     scanPageLinks();
 
-    // Watch for dynamically added media
-    const observer = new MutationObserver(() => {
-      scanForMedia();
-    });
+    const observer = new MutationObserver(() => scanForMedia());
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Re-scan links periodically (for SPAs)
-    setInterval(scanPageLinks, 3000);
+    state.scanInterval = setInterval(scanPageLinks, 3000);
   }
 
   if (document.readyState === 'loading') {

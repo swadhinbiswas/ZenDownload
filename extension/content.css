@@ -1,6 +1,6 @@
 /* content.css - Styles injected into web pages */
 .zd-floating-btn {
-  position: absolute;
+  position: fixed;
   z-index: 2147483647;
   display: flex;
   align-items: center;

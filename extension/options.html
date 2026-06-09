@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZenDownload Extension Options</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #09090b;
+      color: #fafafa;
+      padding: 24px;
+      max-width: 480px;
+      margin: 0 auto;
+      font-size: 14px;
+    }
+    h1 { font-size: 18px; display: flex; align-items: center; gap: 8px; margin: 0 0 24px; }
+    .option { padding: 16px 0; border-bottom: 1px solid #27272a; }
+    .option:last-child { border-bottom: none; }
+    .option-label { font-weight: 500; margin-bottom: 4px; }
+    .option-desc { font-size: 12px; color: #71717a; margin-bottom: 8px; }
+    label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: #6366f1; cursor: pointer; }
+    .status { padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .status.ok { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+    .status.err { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status.ok .dot { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .status.err .dot { background: #ef4444; }
+    #saveBtn {
+      margin-top: 20px; padding: 10px 20px; background: #6366f1; color: white;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    #saveBtn:hover { background: #4f46e5; }
+    #saveBtn:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#6366f1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ZenDownload Options</h1>
+
+  <div id="serverStatus" class="status err"><span class="dot"></span><span id="statusText">Checking...</span></div>
+
+  <div class="option">
+    <div class="option-label">Intercept browser downloads</div>
+    <div class="option-desc">When Chrome downloads a file, automatically forward it to ZenDownload instead</div>
+    <label><input type="checkbox" id="interceptDownloads" checked> Enable download interception</label>
+  </div>
+
+  <div class="option">
+    <div class="option-label">Show notifications</div>
+    <div class="option-desc">Show a notification when files are sent to ZenDownload</div>
+    <label><input type="checkbox" id="showNotifications" checked> Enable notifications</label>
+  </div>
+
+  <div class="option">
+    <div class="option-label">WebRequest sniffing</div>
+    <div class="option-desc">Automatically detect downloadable file URLs in network requests</div>
+    <label><input type="checkbox" id="sniffRequests" checked> Enable sniffing</label>
+  </div>
+
+  <button id="saveBtn">Save Settings</button>
+  <p id="saveStatus" style="font-size:12px;color:#71717a;margin-top:8px"></p>
+
+  <script>
+    const API = 'http://localhost:9527';
+
+    async function checkServer() {
+      const el = document.getElementById('serverStatus');
+      const text = document.getElementById('statusText');
+      try {
+        const res = await fetch(API + '/api/health', { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+          el.className = 'status ok'; text.textContent = 'ZenDownload is running';
+        } else {
+          el.className = 'status err'; text.textContent = 'Server error: ' + res.status;
+        }
+      } catch {
+        el.className = 'status err'; text.textContent = 'ZenDownload is not running';
+      }
+    }
+
+    function load() {
+      chrome.storage.local.get(['interceptDownloads', 'showNotifications', 'sniffRequests'], (r) => {
+        document.getElementById('interceptDownloads').checked = r.interceptDownloads !== false;
+        document.getElementById('showNotifications').checked = r.showNotifications !== false;
+        document.getElementById('sniffRequests').checked = r.sniffRequests !== false;
+      });
+    }
+
+    document.getElementById('saveBtn').onclick = () => {
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true; btn.textContent = 'Saving...';
+      chrome.storage.local.set({
+        interceptDownloads: document.getElementById('interceptDownloads').checked,
+        showNotifications: document.getElementById('showNotifications').checked,
+        sniffRequests: document.getElementById('sniffRequests').checked,
+      }, () => {
+        const status = document.getElementById('saveStatus');
+        status.textContent = 'Settings saved';
+        setTimeout(() => { status.textContent = ''; }, 2000);
+        btn.disabled = false; btn.textContent = 'Save Settings';
+      });
+    };
+
+    checkServer();
+    load();
+  </script>
+</body>
+</html>

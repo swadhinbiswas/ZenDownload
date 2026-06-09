@@ -4,7 +4,7 @@ use tauri::AppHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NativeMessage {
-    pub message_type: String, // "download", "sniffed_url", "settings"
+    pub message_type: String,
     pub url: Option<String>,
     pub filename: Option<String>,
     pub referrer: Option<String>,
@@ -16,10 +16,8 @@ pub struct NativeMessage {
     pub timestamp: i64,
 }
 
-const FRAME_HEADER_SIZE: usize = 4;
-
 pub fn read_message<R: BufRead>(reader: &mut R) -> Result<Option<NativeMessage>, String> {
-    let mut header = [0u8; FRAME_HEADER_SIZE];
+    let mut header = [0u8; 4];
     match reader.read_exact(&mut header) {
         Ok(_) => {}
         Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => return Ok(None),
@@ -31,9 +29,9 @@ pub fn read_message<R: BufRead>(reader: &mut R) -> Result<Option<NativeMessage>,
     }
     let mut body = vec![0u8; len];
     reader.read_exact(&mut body).map_err(|e| e.to_string())?;
-    let msg: NativeMessage = serde_json::from_slice(&body)
-        .map_err(|e| format!("Failed to parse native message: {}", e))?;
-    Ok(Some(msg))
+    serde_json::from_slice(&body)
+        .map(Some)
+        .map_err(|e| format!("Failed to parse native message: {}", e))
 }
 
 pub fn write_message<W: Write>(writer: &mut W, message: &impl Serialize) -> Result<(), String> {
@@ -58,71 +56,114 @@ pub async fn start_native_messaging_listener(app: AppHandle) {
                     if tx.send(msg).is_err() { break; }
                 }
                 Ok(None) => break,
-                Err(e) => eprintln!("Native messaging read error: {}", e),
+                Err(e) => eprintln!("[NativeMessaging] Read error: {}", e),
             }
         }
     });
 
-    while let Ok(msg) = rx.recv() {
-        handle_message(&app, msg).await;
-    }
-}
-
-async fn handle_message(app: &AppHandle, msg: NativeMessage) {
     use tauri::Emitter;
-    match msg.message_type.as_str() {
-        "download" => {
-            if let Some(url) = &msg.url {
-                let _ = app.emit("browser-download-request", &msg);
-                eprintln!("Browser requested download: {}", url);
+    while let Ok(msg) = rx.recv() {
+        match msg.message_type.as_str() {
+            "download" => {
+                if let Some(url) = &msg.url {
+                    let _ = app.emit("browser-download-request", &msg);
+                }
             }
-        }
-        "sniffed_url" => {
-            if let Some(url) = &msg.url {
-                let _ = app.emit("browser-url-sniffed", &msg);
-                eprintln!("Browser sniffed URL: {}", url);
+            "sniffed_url" => {
+                if let Some(url) = &msg.url {
+                    let _ = app.emit("browser-url-sniffed", &msg);
+                }
             }
+            "settings" => {
+                let _ = app.emit("browser-settings-sync", &msg);
+            }
+            _ => {}
         }
-        "settings" => {
-            let _ = app.emit("browser-settings-sync", &msg);
-        }
-        _ => {}
     }
 }
 
 pub fn get_native_messaging_manifest_path(browser: &str) -> String {
-    // Returns the path where the native messaging manifest should be installed
+    let filename = "com.zendownload.host.json";
     match browser {
         "chrome" => {
             if cfg!(target_os = "macos") {
-                "/Library/Google/Chrome/NativeMessagingHosts/com.zendownload.host.json".to_string()
+                format!("/Library/Google/Chrome/NativeMessagingHosts/{}", filename)
             } else if cfg!(target_os = "windows") {
-                "C:\\Program Files\\ZenDownload\\manifests\\com.zendownload.host.json".to_string()
+                format!(
+                    "{}ZenDownload\\manifests\\{}",
+                    std::env::var("PROGRAMFILES").unwrap_or_else(|_| "C:\\Program Files\\".into()),
+                    filename
+                )
             } else {
-                "/etc/opt/chrome/native-messaging-hosts/com.zendownload.host.json".to_string()
+                format!("/etc/opt/chrome/native-messaging-hosts/{}", filename)
+            }
+        }
+        "chromium" => {
+            if cfg!(target_os = "linux") {
+                format!("/etc/chromium/native-messaging-hosts/{}", filename)
+            } else {
+                get_native_messaging_manifest_path("chrome")
             }
         }
         "firefox" => {
             if cfg!(target_os = "macos") {
-                "~/Library/Application Support/Mozilla/NativeMessagingHosts/com.zendownload.host.json".to_string()
+                format!(
+                    "{}/Library/Application Support/Mozilla/NativeMessagingHosts/{}",
+                    std::env::var("HOME").unwrap_or_else(|_| "~".into()),
+                    filename
+                )
             } else if cfg!(target_os = "windows") {
-                "C:\\Program Files\\ZenDownload\\manifests\\com.zendownload.host.json".to_string()
+                format!(
+                    "{}ZenDownload\\manifests\\{}",
+                    std::env::var("PROGRAMFILES").unwrap_or_else(|_| "C:\\Program Files\\".into()),
+                    filename
+                )
             } else {
-                "~/mozilla/native-messaging-hosts/com.zendownload.host.json".to_string()
+                format!(
+                    "{}/.mozilla/native-messaging-hosts/{}",
+                    std::env::var("HOME").unwrap_or_else(|_| "~".into()),
+                    filename
+                )
             }
         }
-        _ => "com.zendownload.host.json".to_string(),
+        _ => filename.to_string(),
+    }
+}
+
+pub fn get_effective_binary_path() -> String {
+    if let Ok(exe) = std::env::current_exe() {
+        exe.to_string_lossy().to_string()
+    } else {
+        "zendownload".to_string()
     }
 }
 
 pub fn build_manifest_json(browser: &str) -> String {
-    let path = get_native_messaging_manifest_path(browser);
-    let manifest = serde_json::json!({
-        "name": "com.zendownload.host",
-        "description": "ZenDownload Native Messaging Host",
-        "path": path,
-        "type": "stdio",
-        "allowed_extensions": ["com.zendownload.extension@browser"]
-    });
+    use std::collections::HashMap;
+
+    let path = get_effective_binary_path();
+
+    let mut manifest = serde_json::Map::new();
+    manifest.insert("name".into(), serde_json::Value::String("com.zendownload.host".into()));
+    manifest.insert("description".into(), serde_json::Value::String("ZenDownload Native Messaging Host".into()));
+    manifest.insert("path".into(), serde_json::Value::String(path));
+    manifest.insert("type".into(), serde_json::Value::String("stdio".into()));
+
+    match browser {
+        "chrome" | "chromium" => {
+            let origins: Vec<String> = vec![
+                "chrome-extension://*/".into(),
+            ];
+            manifest.insert("allowed_origins".into(), serde_json::Value::Array(
+                origins.into_iter().map(serde_json::Value::String).collect()
+            ));
+        }
+        _ => {
+            manifest.insert("allowed_extensions".into(), serde_json::Value::Array(
+                vec![serde_json::Value::String("com.zendownload.extension@browser".into())]
+            ));
+        }
+    }
+
     serde_json::to_string_pretty(&manifest).unwrap_or_default()
 }
