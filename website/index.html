@@ -4,593 +4,614 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZenDownload — Modern Download Manager</title>
-<meta name="description" content="A cross-platform download manager with BitTorrent, media streaming, TV series browser, and a plugin system.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><path d='M10 22V10l12 6z' fill='white'/></svg>">
+<meta name="description" content="A cross-platform download manager with BitTorrent, media streaming, TV series browser, music downloader, and a powerful plugin system.">
+<meta name="theme-color" content="#6366f1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M6 28V4l18 12z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
+      colors: {
+        zinc: { 950: '#09090b', 900: '#18181b', 800: '#27272a', 700: '#3f3f46', 600: '#52525b', 500: '#71717a', 400: '#a1a1aa', 300: '#d4d4d8', 200: '#e4e4e7', 100: '#f4f4f5', 50: '#fafafa' },
+        indigo: { 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5' },
+      },
+      animation: {
+        'fade-up': 'fadeUp 0.6s ease-out forwards',
+        'fade-in': 'fadeIn 0.8s ease-out forwards',
+        'float': 'float 8s ease-in-out infinite',
+        'pulse-slow': 'pulse 4s ease-in-out infinite',
+        'slide-up': 'slideUp 0.6s ease-out forwards',
+        'glow': 'glow 3s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeUp: { '0%': { opacity: '0', transform: 'translateY(24px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-16px)' } },
+        slideUp: { '0%': { opacity: '0', transform: 'translateY(40px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        glow: { '0%, 100%': { opacity: '0.4' }, '50%': { opacity: '0.8' } },
+      },
+    },
+  },
+}
+</script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--accent:#6366f1;--accent-light:#818cf8;--accent-dark:#4f46e5;--bg:#09090b;--bg2:#18181b;--bg3:#27272a;--text:#f4f4f5;--text2:#a1a1aa;--text3:#52525b;--radius:12px;--font:'Geist Variable','Inter',system-ui,-apple-system,sans-serif}
-html{scroll-behavior:smooth;font-size:15px}
-body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
-::selection{background:color-mix(in srgb,var(--accent) 30%,transparent)}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{overflow-x:hidden}
+::selection{background:rgba(99,102,241,0.3);color:#f4f4f5}
+.gradient-border{position:relative}
+.gradient-border::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(34,211,238,0.1),rgba(99,102,241,0.3));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.gradient-text{background:linear-gradient(135deg,#818cf8,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.gradient-border-card{position:relative}
+.gradient-border-card::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(99,102,241,0.2),transparent 40%,transparent 60%,rgba(34,211,238,0.1));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;transition:opacity 0.3s}
+.gradient-border-card:hover::before{opacity:0.7}
+.grid-pattern{background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:48px 48px}
+.glass{border:1px solid rgba(255,255,255,0.06)}
+.card-hover{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.card-hover:hover{transform:translateY(-4px);box-shadow:0 24px 48px -12px rgba(0,0,0,0.4)}
+.scroll-hidden::-webkit-scrollbar{height:6px}
+.scroll-hidden::-webkit-scrollbar-track{background:transparent}
+.scroll-hidden::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+.scroll-hidden::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.12)}
+.placeholder-img{position:relative;overflow:hidden}
+.placeholder-img::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,211,238,0.03));pointer-events:none}
+.screenshot-grid img{transition:transform 0.5s cubic-bezier(0.4,0,0.2,1)}
+.screenshot-grid img:hover{transform:scale(1.02)}
 
-/* ---- Navigation ---- */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1rem 2rem;background:rgba(9,9,11,0.8);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between}
-.nav-links{display:flex;gap:0.25rem;list-style:none}
-.nav-links a{padding:0.5rem 1rem;border-radius:8px;color:var(--text2);text-decoration:none;font-size:0.85rem;font-weight:500;transition:all .2s}
-.nav-links a:hover{color:var(--text);background:rgba(255,255,255,0.05)}
-.logo{display:flex;align-items:center;gap:0.75rem;text-decoration:none;color:var(--text);font-weight:700;font-size:1.1rem}
-.logo-icon{width:2rem;height:2rem;border-radius:8px;background:linear-gradient(135deg,var(--accent),#22d3ee);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(99,102,241,0.3)}
-.logo-icon svg{width:1rem;height:1rem;fill:white}
-.mobile-toggle{display:none;background:none;border:none;color:var(--text2);cursor:pointer;padding:0.5rem}
-
-/* ---- Hero ---- */
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:6rem 2rem 4rem}
-.hero-bg{position:absolute;inset:0;z-index:0}
-.hero-gradient{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(99,102,241,0.15),transparent),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(34,211,238,0.08),transparent),radial-gradient(ellipse 50% 40% at 20% 70%,rgba(99,102,241,0.05),transparent)}
-.hero-grid{position:absolute;inset:0;opacity:0.03;background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:60px 60px}
-.hero-particles{position:absolute;inset:0;overflow:hidden}
-.particle{position:absolute;width:4px;height:4px;background:var(--accent);border-radius:50%;opacity:0;animation:particleFloat 8s infinite}
-@keyframes particleFloat{0%{opacity:0;transform:translateY(100vh) scale(0)}20%{opacity:1}80%{opacity:1}100%{opacity:0;transform:translateY(-10vh) scale(1)}}
-.hero-content{position:relative;z-index:1;text-align:center;max-width:800px}
-.hero-badge{display:inline-flex;align-items:center;gap:0.5rem;padding:0.4rem 1rem;border-radius:999px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);font-size:0.8rem;color:var(--accent-light);margin-bottom:2rem;animation:fadeUp .6s ease-out}
-.hero h1{font-size:clamp(2.5rem,6vw,4.5rem);font-weight:800;line-height:1.1;letter-spacing:-0.03em;margin-bottom:1.5rem;animation:fadeUp .6s ease-out .1s both}
-.hero h1 span{background:linear-gradient(135deg,var(--accent-light),#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero p{font-size:clamp(1rem,2vw,1.2rem);color:var(--text2);max-width:600px;margin:0 auto 2.5rem;line-height:1.7;animation:fadeUp .6s ease-out .2s both}
-.hero-buttons{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;animation:fadeUp .6s ease-out .3s both}
-.btn{display:inline-flex;align-items:center;gap:0.6rem;padding:0.85rem 2rem;border-radius:var(--radius);font-size:0.9rem;font-weight:600;text-decoration:none;transition:all .25s;cursor:pointer;border:none}
-.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:white;box-shadow:0 4px 20px rgba(99,102,241,0.3)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,0.4)}
-.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid rgba(255,255,255,0.08)}
-.btn-secondary:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px)}
-.btn-outline{background:transparent;color:var(--text2);border:1px solid rgba(255,255,255,0.08)}
-.btn-outline:hover{color:var(--text);border-color:rgba(255,255,255,0.15)}
-
-/* ---- Hero Mockup ---- */
-.hero-mockup{position:relative;z-index:1;margin-top:4rem;width:100%;max-width:960px;border-radius:var(--radius);overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.5);animation:fadeUp .8s ease-out .4s both;border:1px solid rgba(255,255,255,0.06)}
-.mockup-header{display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;background:var(--bg2);border-bottom:1px solid rgba(255,255,255,0.06)}
-.mockup-dot{width:10px;height:10px;border-radius:50%}
-.mockup-dot:nth-child(1){background:#ef4444}
-.mockup-dot:nth-child(2){background:#f59e0b}
-.mockup-dot:nth-child(3){background:#10b981}
-.mockup-title{color:var(--text3);font-size:0.75rem;margin-left:0.5rem;font-weight:500}
-.mockup-body{background:var(--bg);display:grid;grid-template-columns:200px 1fr;height:400px}
-.mockup-sidebar{background:rgba(24,24,27,0.8);border-right:1px solid rgba(255,255,255,0.06);padding:1rem}
-.mockup-logo-bar{display:flex;align-items:center;gap:0.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:1rem}
-.mockup-logo-box{width:1.5rem;height:1.5rem;border-radius:4px;background:linear-gradient(135deg,var(--accent),#22d3ee)}
-.mockup-logo-text{font-size:0.65rem;color:var(--text3);font-weight:600;letter-spacing:0.05em}
-.mockup-nav-item{display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.6rem;border-radius:6px;font-size:0.7rem;color:var(--text3);margin-bottom:0.25rem;transition:all .15s}
-.mockup-nav-item.active{background:rgba(255,255,255,0.06);color:var(--text)}
-
-/* Download list mockup */
-.mockup-main{padding:1rem;overflow:hidden}
-.mockup-list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
-.mockup-list-title{font-size:0.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:0.5rem}
-.mockup-list-count{font-size:0.65rem;color:var(--text3);padding:0.15rem 0.5rem;border-radius:4px;background:var(--bg3)}
-.mockup-item{display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;border-radius:8px;background:rgba(24,24,27,0.5);border:1px solid rgba(255,255,255,0.04);margin-bottom:0.5rem;animation:listItem .3s ease-out both}
-.mockup-item:nth-child(2){animation-delay:.1s}
-.mockup-item:nth-child(3){animation-delay:.2s}
-.mockup-item:nth-child(4){animation-delay:.3s}
-@keyframes listItem{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
-.mockup-thumb{width:40px;height:30px;border-radius:4px;background:linear-gradient(135deg,var(--accent),rgba(99,102,241,0.3));flex-shrink:0}
-.mockup-item-info{flex:1;min-width:0}
-.mockup-item-name{font-size:0.72rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mockup-item-meta{display:flex;gap:1rem;font-size:0.6rem;color:var(--text3);margin-top:0.15rem}
-.mockup-progress{height:4px;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:0.35rem;overflow:hidden}
-.mockup-bar{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),#22d3ee);transition:width .5s ease}
-
-/* ---- Section common ---- */
-section{padding:5rem 2rem;position:relative}
-.section-title{text-align:center;margin-bottom:1rem;font-size:clamp(1.5rem,3vw,2.2rem);font-weight:700;letter-spacing:-0.02em}
-.section-subtitle{text-align:center;color:var(--text2);max-width:600px;margin:0 auto 4rem;font-size:1rem}
-.gradient-text{background:linear-gradient(135deg,var(--accent-light),#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-
-/* ---- Features ---- */
-.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;max-width:1100px;margin:0 auto}
-.feature-card{padding:1.5rem;border-radius:var(--radius);background:var(--bg2);border:1px solid rgba(255,255,255,0.04);transition:all .3s;opacity:0;transform:translateY(20px)}
-.feature-card.visible{opacity:1;transform:translateY(0)}
-.feature-card:hover{transform:translateY(-4px);border-color:rgba(99,102,241,0.2);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
-.feature-icon{width:2.5rem;height:2.5rem;border-radius:10px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:1.2rem}
-.feature-card h3{font-size:0.95rem;font-weight:600;margin-bottom:0.4rem}
-.feature-card p{font-size:0.82rem;color:var(--text2);line-height:1.6}
-.feature-tags{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.75rem}
-.feature-tag{padding:0.15rem 0.5rem;border-radius:4px;font-size:0.65rem;background:rgba(99,102,241,0.08);color:var(--accent-light);font-weight:500}
-
-/* ---- Screenshot Showcase ---- */
-.screenshots{background:var(--bg2);overflow:hidden}
-.showcase-scroll{display:flex;gap:1.5rem;overflow-x:auto;padding:1rem 0 2rem;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;max-width:1100px;margin:0 auto}
-.showcase-scroll::-webkit-scrollbar{height:4px}
-.showcase-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px}
-.showcase-card{flex:0 0 320px;scroll-snap-align:start;border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,0.06);transition:all .3s;background:var(--bg)}
-.showcase-card:hover{transform:translateY(-4px);border-color:rgba(99,102,241,0.2)}
-.showcase-preview{height:200px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-.showcase-preview .mockup-mini{width:90%;height:80%;border-radius:6px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;display:flex;flex-direction:column;background:var(--bg);position:relative}
-.showcase-preview .mockup-mini-bar{height:20px;background:var(--bg3);display:flex;align-items:center;gap:4px;padding:0 10px}
-.showcase-preview .mockup-mini-dot{width:6px;height:6px;border-radius:50%}
-.showcase-preview .mockup-mini-content{padding:12px;flex:1;display:flex;flex-direction:column;gap:6px}
-.showcase-preview .mockup-mini-line{height:6px;border-radius:3px;background:rgba(255,255,255,0.06)}
-.showcase-preview .mockup-mini-line:nth-child(1){width:70%}
-.showcase-preview .mockup-mini-line:nth-child(2){width:50%}
-.showcase-preview .mockup-mini-line:nth-child(3){width:85%}
-.showcase-card:nth-child(1) .showcase-preview{background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(34,211,238,0.05))}
-.showcase-card:nth-child(2) .showcase-preview{background:linear-gradient(135deg,rgba(34,211,238,0.15),rgba(99,102,241,0.05))}
-.showcase-card:nth-child(3) .showcase-preview{background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(99,102,241,0.05))}
-.showcase-card:nth-child(4) .showcase-preview{background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(99,102,241,0.05))}
-.showcase-card:nth-child(5) .showcase-preview{background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(99,102,241,0.05))}
-.showcase-card:nth-child(6) .showcase-preview{background:linear-gradient(135deg,rgba(236,72,153,0.15),rgba(99,102,241,0.05))}
-.showcase-info{padding:1rem}
-.showcase-info h3{font-size:0.85rem;font-weight:600;margin-bottom:0.2rem}
-.showcase-info p{font-size:0.75rem;color:var(--text2)}
-
-/* ---- Plugin Docs ---- */
-.plugins-docs{max-width:900px;margin:0 auto}
-.plugins-docs h2{font-size:clamp(1.5rem,3vw,2rem);text-align:center;margin-bottom:3rem}
-.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
-@media(max-width:768px){.docs-grid{grid-template-columns:1fr}}
-.docs-card{padding:1.5rem;border-radius:var(--radius);background:var(--bg2);border:1px solid rgba(255,255,255,0.04)}
-.docs-card h3{font-size:0.9rem;font-weight:600;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem}
-.docs-card h3 .icon{width:1.2rem;height:1.2rem;border-radius:6px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;font-size:0.7rem}
-.docs-card ul{list-style:none;font-size:0.8rem;color:var(--text2);line-height:2}
-.docs-card ul li::before{content:"▸ ";color:var(--accent-light);font-weight:bold}
-.code-block{background:rgba(0,0,0,0.3);border-radius:8px;padding:1rem;margin:0.75rem 0;font-size:0.72rem;font-family:'SF Mono','JetBrains Mono','Fira Code',monospace;overflow-x:auto;line-height:1.6;color:#e4e4e7;border:1px solid rgba(255,255,255,0.04)}
-.code-block .comment{color:#71717a}
-.code-block .key{color:#818cf8}
-.code-block .string{color:#34d399}
-.code-block .punctuation{color:#a1a1aa}
-.code-block .keyword{color:#f472b6}
-
-/* ---- CTA ---- */
-.cta-section{text-align:center;padding:6rem 2rem;background:linear-gradient(180deg,transparent,rgba(99,102,241,0.03),transparent)}
-.cta-section h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:700;margin-bottom:1rem}
-.cta-section p{color:var(--text2);max-width:500px;margin:0 auto 2.5rem}
-
-/* ---- Footer ---- */
-footer{padding:3rem 2rem;border-top:1px solid rgba(255,255,255,0.04);text-align:center;color:var(--text3);font-size:0.8rem}
-footer a{color:var(--text2);text-decoration:none}
-footer a:hover{color:var(--text)}
-
-/* ---- Animations ---- */
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-
-.animate-on-scroll{opacity:0;transform:translateY(30px);transition:all .6s ease-out}
-.animate-on-scroll.visible{opacity:1;transform:translateY(0)}
-
-/* ---- Responsive ---- */
-@media(max-width:768px){
-  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;background:rgba(9,9,11,0.95);backdrop-filter:blur(20px);flex-direction:column;padding:1rem;border-bottom:1px solid rgba(255,255,255,0.06)}
-  .nav-links.open{display:flex}
-  .mobile-toggle{display:block}
-  .mockup-body{grid-template-columns:1fr;height:auto}
-  .mockup-sidebar{display:none}
-  .hero-mockup{margin-top:2rem}
-  section{padding:3rem 1rem}
-  .features-grid{grid-template-columns:1fr}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}
 }
 </style>
 </head>
-<body>
+<body class="bg-zinc-950 text-zinc-100 font-sans antialiased">
 
-<!-- Navigation -->
-<nav>
-  <a href="#" class="logo">
-    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M6 20V4l14 8z"/></svg></div>
-    ZenDownload
-  </a>
-  <ul class="nav-links" id="navLinks">
-    <li><a href="#features">Features</a></li>
-    <li><a href="#screenshots">Screenshots</a></li>
-    <li><a href="#plugins">Plugins</a></li>
-    <li><a href="#download">Download</a></li>
-    <li><a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" rel="noopener">GitHub</a></li>
-  </ul>
-  <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-  </button>
+<!-- Nav -->
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-2xl">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-2.5 font-bold text-sm no-underline text-zinc-100">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M6 20V4l14 8z"/></svg>
+      </div>
+      ZenDownload
+    </a>
+    <div class="hidden md:flex items-center gap-1">
+      <a href="#features" class="px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-all no-underline">Features</a>
+      <a href="#screenshots" class="px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-all no-underline">Screenshots</a>
+      <a href="#tech" class="px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-all no-underline">Technology</a>
+      <a href="#plugins" class="px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-all no-underline">Plugins</a>
+      <a href="#download" class="px-3 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-all no-underline">Download</a>
+      <a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" rel="noopener" class="ml-2 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-500 hover:bg-indigo-600 text-white transition-all shadow-lg shadow-indigo-500/20 no-underline inline-flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+    <button class="md:hidden p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]" onclick="document.getElementById('mobileMenu').classList.toggle('hidden')" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+  <div id="mobileMenu" class="hidden md:hidden border-t border-white/[0.06] bg-zinc-950/95 backdrop-blur-2xl">
+    <div class="px-4 py-3 space-y-1">
+      <a href="#features" class="block px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]" onclick="document.getElementById('mobileMenu').classList.add('hidden')">Features</a>
+      <a href="#screenshots" class="block px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]" onclick="document.getElementById('mobileMenu').classList.add('hidden')">Screenshots</a>
+      <a href="#tech" class="block px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]" onclick="document.getElementById('mobileMenu').classList.add('hidden')">Technology</a>
+      <a href="#plugins" class="block px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]" onclick="document.getElementById('mobileMenu').classList.add('hidden')">Plugins</a>
+      <a href="#download" class="block px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05]" onclick="document.getElementById('mobileMenu').classList.add('hidden')">Download</a>
+      <a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" class="block px-3 py-2 rounded-lg text-sm font-semibold text-indigo-400 hover:text-indigo-300 hover:bg-white/[0.05]">GitHub</a>
+    </div>
+  </div>
 </nav>
 
 <!-- Hero -->
-<section class="hero">
-  <div class="hero-bg">
-    <div class="hero-gradient"></div>
-    <div class="hero-grid"></div>
-    <div class="hero-particles" id="particles"></div>
+<section class="relative min-h-screen flex items-center overflow-hidden pt-16">
+  <div class="absolute inset-0 z-0">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(99,102,241,0.15),transparent),radial-gradient(ellipse_60%_40%_at_80%_80%,rgba(34,211,238,0.08),transparent),radial-gradient(ellipse_50%_40%_at_20%_70%,rgba(99,102,241,0.05),transparent)]"></div>
+    <div class="absolute inset-0 grid-pattern opacity-30"></div>
+    <div id="particles" class="absolute inset-0 overflow-hidden"></div>
   </div>
-  <div class="hero-content">
-    <div class="hero-badge">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-      v0.1.0 — Open Source
-    </div>
-    <h1>Everything you need to<br><span>download anything</span></h1>
-    <p>A modern, cross-platform download manager with torrent support, media streaming, TV series browser, music downloader, and a powerful plugin system.</p>
-    <div class="hero-buttons">
-      <a href="#download" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download
-      </a>
-      <a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" rel="noopener" class="btn btn-secondary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-        Source Code
-      </a>
-    </div>
-  </div>
-
-  <div class="hero-mockup">
-    <div class="mockup-header">
-      <div class="mockup-dot"></div>
-      <div class="mockup-dot"></div>
-      <div class="mockup-dot"></div>
-      <span class="mockup-title">ZenDownload — Download Manager</span>
-    </div>
-    <div class="mockup-body">
-      <div class="mockup-sidebar">
-        <div class="mockup-logo-bar">
-          <div class="mockup-logo-box"></div>
-          <span class="mockup-logo-text">DOWNLOAD MANAGER</span>
-        </div>
-        <div class="mockup-nav-item active"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Downloads</div>
-        <div class="mockup-nav-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Stream</div>
-        <div class="mockup-nav-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> TV Series</div>
+  <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-32 w-full">
+    <div class="text-center max-w-3xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-medium text-indigo-300 mb-8 animate-fade-up">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        v0.1.0 — Open Source
       </div>
-      <div class="mockup-main">
-        <div class="mockup-list-header">
-          <div class="mockup-list-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            All Downloads
+      <h1 class="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-[-0.03em] mb-6 animate-fade-up" style="animation-delay:0.1s">
+        Everything you need<br>
+        <span class="gradient-text">to download anything</span>
+      </h1>
+      <p class="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed mb-10 animate-fade-up" style="animation-delay:0.2s">
+        A modern, cross-platform download manager with torrent support, media streaming, TV browsing, music downloading, and a powerful plugin system.
+      </p>
+      <div class="flex flex-wrap justify-center gap-4 animate-fade-up" style="animation-delay:0.3s">
+        <a href="#download" class="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm transition-all shadow-xl shadow-indigo-500/25 no-underline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Get ZenDownload
+        </a>
+        <a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" rel="noopener" class="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-sm transition-all border border-white/[0.06] no-underline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Source Code
+        </a>
+      </div>
+    </div>
+
+    <!-- App mockup -->
+    <div class="mt-16 md:mt-24 max-w-5xl mx-auto animate-fade-up" style="animation-delay:0.5s">
+      <div class="rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/[0.06]">
+        <div class="flex items-center gap-2 px-4 py-3 bg-zinc-900 border-b border-white/[0.06]">
+          <div class="flex gap-1.5">
+            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+            <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+            <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
           </div>
-          <div class="mockup-list-count">4 active</div>
+          <span class="text-[10px] text-zinc-600 font-medium ml-2">ZenDownload — Download Manager</span>
         </div>
-        <div class="mockup-item">
-          <div class="mockup-thumb" style="background:linear-gradient(135deg,#ef4444,rgba(239,68,68,0.3))"></div>
-          <div class="mockup-item-info">
-            <div class="mockup-item-name">Big.Buck.Bunny.1080p.mp4</div>
-            <div class="mockup-item-meta"><span>Video</span><span>2.4 GB</span><span>82%</span></div>
-            <div class="mockup-progress"><div class="mockup-bar" style="width:82%"></div></div>
+        <div class="flex flex-col md:flex-row bg-zinc-950">
+          <div class="w-full md:w-48 bg-zinc-900/50 border-r border-white/[0.04] p-4 hidden md:block">
+            <div class="flex items-center gap-2 pb-3 mb-3 border-b border-white/[0.06]">
+              <div class="w-5 h-5 rounded bg-gradient-to-br from-indigo-500 to-cyan-400"></div>
+              <span class="text-[10px] font-semibold text-zinc-500 tracking-widest">DOWNLOAD MANAGER</span>
+            </div>
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[11px] font-medium">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Downloads
+              </div>
+              <div class="flex items-center gap-2 px-2.5 py-2 rounded-lg text-zinc-500 text-[11px] font-medium hover:text-zinc-300 hover:bg-white/[0.04] transition-all cursor-default">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Stream
+              </div>
+              <div class="flex items-center gap-2 px-2.5 py-2 rounded-lg text-zinc-500 text-[11px] font-medium hover:text-zinc-300 hover:bg-white/[0.04] transition-all cursor-default">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                TV Series
+              </div>
+              <div class="flex items-center gap-2 px-2.5 py-2 rounded-lg text-zinc-500 text-[11px] font-medium hover:text-zinc-300 hover:bg-white/[0.04] transition-all cursor-default">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="9 9 15 12 9 15 9 9"/></svg>
+                Music
+              </div>
+            </div>
           </div>
-          <div style="font-size:0.6rem;color:var(--text3);white-space:nowrap">4.2 MB/s</div>
-        </div>
-        <div class="mockup-item">
-          <div class="mockup-thumb" style="background:linear-gradient(135deg,#10b981,rgba(16,185,129,0.3))"></div>
-          <div class="mockup-item-info">
-            <div class="mockup-item-name">ubuntu-24.04-desktop-amd64.iso</div>
-            <div class="mockup-item-meta"><span>Programs</span><span>5.8 GB</span><span>34%</span></div>
-            <div class="mockup-progress"><div class="mockup-bar" style="width:34%"></div></div>
+          <div class="flex-1 p-4 md:p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-zinc-400"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span class="text-xs font-semibold text-zinc-200">All Downloads</span>
+              </div>
+              <span class="text-[10px] font-medium text-zinc-500 px-2 py-0.5 rounded bg-zinc-800">4 active</span>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-900/80 border border-white/[0.04]">
+                <div class="w-10 h-7 rounded-md bg-gradient-to-br from-red-500/30 to-red-500/10 flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] font-medium text-zinc-200 truncate">Big.Buck.Bunny.1080p.mp4</div>
+                  <div class="flex gap-4 text-[9px] text-zinc-500 mt-0.5"><span>Video</span><span>2.4 GB</span><span>82%</span></div>
+                  <div class="h-1 rounded-full bg-white/[0.06] mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style="width:82%"></div></div>
+                </div>
+                <span class="text-[10px] text-zinc-500 whitespace-nowrap">4.2 MB/s</span>
+              </div>
+              <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-900/80 border border-white/[0.04]">
+                <div class="w-10 h-7 rounded-md bg-gradient-to-br from-emerald-500/30 to-emerald-500/10 flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] font-medium text-zinc-200 truncate">ubuntu-24.04-desktop-amd64.iso</div>
+                  <div class="flex gap-4 text-[9px] text-zinc-500 mt-0.5"><span>Programs</span><span>5.8 GB</span><span>34%</span></div>
+                  <div class="h-1 rounded-full bg-white/[0.06] mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style="width:34%"></div></div>
+                </div>
+                <span class="text-[10px] text-zinc-500 whitespace-nowrap">11.2 MB/s</span>
+              </div>
+              <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-900/80 border border-white/[0.04]">
+                <div class="w-10 h-7 rounded-md bg-gradient-to-br from-amber-500/30 to-amber-500/10 flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] font-medium text-zinc-200 truncate">Inception.2010.2160p.mkv</div>
+                  <div class="flex gap-4 text-[9px] text-zinc-500 mt-0.5"><span>Video</span><span>12.8 GB</span><span>Seeding</span></div>
+                  <div class="h-1 rounded-full bg-white/[0.06] mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-emerald-500 transition-all" style="width:100%"></div></div>
+                </div>
+                <span class="text-[10px] text-zinc-500 whitespace-nowrap">3.1 MB/s</span>
+              </div>
+              <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-900/80 border border-white/[0.04]">
+                <div class="w-10 h-7 rounded-md bg-gradient-to-br from-purple-500/30 to-purple-500/10 flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] font-medium text-zinc-200 truncate">The.Weeknd — Blinding Lights.mp3</div>
+                  <div class="flex gap-4 text-[9px] text-zinc-500 mt-0.5"><span>Music</span><span>8.4 MB</span><span>97%</span></div>
+                  <div class="h-1 rounded-full bg-white/[0.06] mt-1.5 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style="width:97%"></div></div>
+                </div>
+                <span class="text-[10px] text-zinc-500 whitespace-nowrap">6.8 MB/s</span>
+              </div>
+            </div>
           </div>
-          <div style="font-size:0.6rem;color:var(--text3);white-space:nowrap">11.2 MB/s</div>
         </div>
-        <div class="mockup-item">
-          <div class="mockup-thumb" style="background:linear-gradient(135deg,#f59e0b,rgba(245,158,11,0.3))"></div>
-          <div class="mockup-item-info">
-            <div class="mockup-item-name">Inception.2010.2160p.mkv</div>
-            <div class="mockup-item-meta"><span>Video</span><span>12.8 GB</span><span>Seeding</span></div>
-            <div class="mockup-progress"><div class="mockup-bar" style="width:100%"></div></div>
-          </div>
-          <div style="font-size:0.6rem;color:var(--text3);white-space:nowrap">3.1 MB/s ↑</div>
-        </div>
-        <div class="mockup-item">
-          <div class="mockup-thumb" style="background:linear-gradient(135deg,#8b5cf6,rgba(139,92,246,0.3))"></div>
-          <div class="mockup-item-info">
-            <div class="mockup-item-name">The.Weeknd - Blinding Lights.mp3</div>
-            <div class="mockup-item-meta"><span>Music</span><span>8.4 MB</span><span>97%</span></div>
-            <div class="mockup-progress"><div class="mockup-bar" style="width:97%"></div></div>
-          </div>
-          <div style="font-size:0.6rem;color:var(--text3);white-space:nowrap">6.8 MB/s</div>
-        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="relative py-16 md:py-20 border-t border-white/[0.04] bg-zinc-900/30">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+      <div class="text-center">
+        <div class="text-3xl md:text-4xl font-bold gradient-text mb-1">100+</div>
+        <div class="text-xs text-zinc-500 font-medium">Formats Supported</div>
+      </div>
+      <div class="text-center">
+        <div class="text-3xl md:text-4xl font-bold gradient-text mb-1">15+</div>
+        <div class="text-xs text-zinc-500 font-medium">Plugin Types</div>
+      </div>
+      <div class="text-center">
+        <div class="text-3xl md:text-4xl font-bold gradient-text mb-1">5</div>
+        <div class="text-xs text-zinc-500 font-medium">Platforms</div>
+      </div>
+      <div class="text-center">
+        <div class="text-3xl md:text-4xl font-bold gradient-text mb-1">OSS</div>
+        <div class="text-xs text-zinc-500 font-medium">MIT Licensed</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- Features -->
-<section id="features">
-  <h2 class="section-title">Everything you need, <span class="gradient-text">nothing you don't</span></h2>
-  <p class="section-subtitle">A unified interface for all your downloading needs — from simple HTTP files to torrents, streaming, and beyond.</p>
-  <div class="features-grid">
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">⬇️</div>
-      <h3>Multi-Protocol Downloads</h3>
-      <p>HTTP/HTTPS, BitTorrent, and magnet links — all handled by a unified engine with automatic protocol detection.</p>
-      <div class="feature-tags"><span class="feature-tag">HTTP</span><span class="feature-tag">BitTorrent</span><span class="feature-tag">Magnet</span></div>
+<section id="features" class="relative py-20 md:py-28">
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(99,102,241,0.06),transparent)]"></div>
+  <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16">
+      <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-medium text-indigo-300 mb-4">Features</span>
+      <h2 class="text-3xl md:text-5xl font-extrabold tracking-[-0.02em] mb-4">Everything you need, <span class="gradient-text">nothing you don't</span></h2>
+      <p class="text-zinc-400 max-w-lg mx-auto">A unified interface for all your downloading needs — from simple HTTP files to torrents, streaming, and beyond.</p>
     </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">🧩</div>
-      <h3>Plugin System</h3>
-      <p>Extend functionality with plugins. Hook into download events, add custom UI pages, or integrate webhooks.</p>
-      <div class="feature-tags"><span class="feature-tag">Hooks</span><span class="feature-tag">UI Plugins</span><span class="feature-tag">Webhooks</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">📺</div>
-      <h3>TV Series Browser</h3>
-      <p>Browse, filter, and download TV episodes by category, country, and language — all from one interface.</p>
-      <div class="feature-tags"><span class="feature-tag">Categories</span><span class="feature-tag">Filters</span><span class="feature-tag">Multi-Language</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">🎵</div>
-      <h3>Music Downloader</h3>
-      <p>Search and download from YouTube and SoundCloud with automatic metadata embedding (title, artist, album art).</p>
-      <div class="feature-tags"><span class="feature-tag">YouTube</span><span class="feature-tag">SoundCloud</span><span class="feature-tag">ID3 Tags</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">🎬</div>
-      <h3>Media Streaming</h3>
-      <p>Stream video and audio while downloading via yt-dlp integration. Play your content before it finishes.</p>
-      <div class="feature-tags"><span class="feature-tag">yt-dlp</span><span class="feature-tag">Progressive</span><span class="feature-tag">Transcoding</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">🎨</div>
-      <h3>Customizable Theme</h3>
-      <p>12 accent colors, adjustable corner roundness, font sizes, glass/blur effects, and a compact mode.</p>
-      <div class="feature-tags"><span class="feature-tag">Dark Theme</span><span class="feature-tag">Accents</span><span class="feature-tag">Compact</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">⚡</div>
-      <h3>Torrent Engine</h3>
-      <p>DHT, PEX, magnet resolution, multi-tracker support, and streaming for torrents. Built on librqbit.</p>
-      <div class="feature-tags"><span class="feature-tag">DHT</span><span class="feature-tag">PEX</span><span class="feature-tag">Multi-Tracker</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">🔗</div>
-      <h3>Debrid Integration</h3>
-      <p>Connect your Real-Debrid, AllDebrid, or Premiumize account for uncached, high-speed downloads.</p>
-      <div class="feature-tags"><span class="feature-tag">Real-Debrid</span><span class="feature-tag">AllDebrid</span><span class="feature-tag">Premiumize</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">📋</div>
-      <h3>Clipboard Detection</h3>
-      <p>Automatically detects URLs copied to your clipboard and smartly categorizes them by type.</p>
-      <div class="feature-tags"><span class="feature-tag">Auto-Detect</span><span class="feature-tag">Smart Sort</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">⏱️</div>
-      <h3>Bandwidth Control</h3>
-      <p>Per-download speed limits, time-based bandwidth profiles, and global rate limiting for precise control.</p>
-      <div class="feature-tags"><span class="feature-tag">Throttle</span><span class="feature-tag">Scheduler</span><span class="feature-tag">Priority</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">📊</div>
-      <h3>Speed Test</h3>
-      <p>Built-in multi-server speed test with live graph, test history, and per-server breakdowns.</p>
-      <div class="feature-tags"><span class="feature-tag">Cloudflare</span><span class="feature-tag">Google</span><span class="feature-tag">Linode</span></div>
-    </div>
-    <div class="feature-card animate-on-scroll">
-      <div class="feature-icon">🔐</div>
-      <h3>Security & Privacy</h3>
-      <p>Proxy support (HTTP/HTTPS/SOCKS5), VirusTotal scanning, adult content filtering, and encrypted storage.</p>
-      <div class="feature-tags"><span class="feature-tag">Proxy</span><span class="feature-tag">VirusTotal</span><span class="feature-tag">Filtering</span></div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Multi-Protocol Downloads</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">HTTP/HTTPS, BitTorrent, and magnet links — all handled by a unified engine with automatic protocol detection.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">HTTP</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">BitTorrent</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Magnet</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Plugin System</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Extend functionality with plugins. Hook into download events, add custom UI pages, or integrate webhooks.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Hooks</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">UI Plugins</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Webhooks</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">TV Series Browser</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Browse, filter, and download TV episodes by category, country, and language — all from one interface.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Categories</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Filters</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Multi-Language</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Music Downloader</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Search and download from YouTube and SoundCloud with automatic metadata embedding.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">YouTube</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">SoundCloud</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">ID3 Tags</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Media Streaming</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Stream video and audio while downloading via yt-dlp integration. Play before it finishes.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">yt-dlp</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Progressive</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Transcoding</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Customizable Theme</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">12 accent colors, adjustable corner roundness, font sizes, glass effects, and a compact mode.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Dark Theme</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Accents</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Compact</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="13" r="9"/><path d="M14.35 4.65A6 6 0 0 1 18 7"/><path d="M11 9v4l2.5 1.5"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Torrent Engine</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">DHT, PEX, magnet resolution, multi-tracker support, and streaming for torrents. Built on librqbit.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">DHT</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">PEX</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Multi-Tracker</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Debrid Integration</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Connect your Real-Debrid, AllDebrid, or Premiumize account for uncached, high-speed downloads.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Real-Debrid</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">AllDebrid</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Premiumize</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8"/><rect x="14" y="2" width="8" height="8"/><rect x="2" y="14" width="8" height="8"/><rect x="14" y="14" width="8" height="8"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Clipboard Detection</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Automatically detects URLs copied to your clipboard and smartly categorizes them by type.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Auto-Detect</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Smart Sort</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Bandwidth Control</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Per-download speed limits, time-based bandwidth profiles, and global rate limiting for precise control.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Throttle</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Scheduler</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Priority</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Speed Test</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Built-in multi-server speed test with live graph, test history, and per-server breakdowns.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Cloudflare</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Google</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Linode</span></div>
+      </div>
+
+      <div class="feature-card p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover opacity-0 translate-y-6">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1.5">Security & Privacy</h3>
+        <p class="text-xs text-zinc-400 leading-relaxed">Proxy support, VirusTotal scanning, adult content filtering, and encrypted credential storage.</p>
+        <div class="flex flex-wrap gap-1.5 mt-3"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Proxy</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">VirusTotal</span><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-300">Filtering</span></div>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- Screenshots -->
-<section id="screenshots" class="screenshots">
-  <h2 class="section-title">See it in <span class="gradient-text">action</span></h2>
-  <p class="section-subtitle">A glance at the ZenDownload interface. Click and drag to scroll through the showcase.</p>
-  <div class="showcase-scroll">
-    <div class="showcase-card">
-      <div class="showcase-preview">
-        <div class="mockup-mini">
-          <div class="mockup-mini-bar"><div class="mockup-mini-dot" style="background:#ef4444"></div><div class="mockup-mini-dot" style="background:#f59e0b"></div><div class="mockup-mini-dot" style="background:#10b981"></div></div>
-          <div class="mockup-mini-content"><div class="mockup-mini-line"></div><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:40%"></div><div class="mockup-mini-line" style="width:65%"></div><div class="mockup-mini-line" style="width:30%"></div><div class="mockup-mini-line" style="width:75%"></div></div>
-        </div>
-      </div>
-      <div class="showcase-info">
-        <h3>Download Manager</h3>
-        <p>Complete download list with progress bars, speed graphs, category filters, and search.</p>
-      </div>
+<section id="screenshots" class="relative py-20 md:py-28 bg-zinc-900/30">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16">
+      <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-medium text-indigo-300 mb-4">Gallery</span>
+      <h2 class="text-3xl md:text-5xl font-extrabold tracking-[-0.02em] mb-4">See it in <span class="gradient-text">action</span></h2>
+      <p class="text-zinc-400 max-w-lg mx-auto">A preview of the ZenDownload interface and its key features.</p>
     </div>
-    <div class="showcase-card">
-      <div class="showcase-preview">
-        <div class="mockup-mini">
-          <div class="mockup-mini-bar"><div class="mockup-mini-dot" style="background:#ef4444"></div><div class="mockup-mini-dot" style="background:#f59e0b"></div><div class="mockup-mini-dot" style="background:#10b981"></div></div>
-          <div class="mockup-mini-content" style="justify-content:center;align-items:center;gap:8px">
-            <div style="width:60%;height:40%;border-radius:4px;background:linear-gradient(135deg,var(--accent),rgba(99,102,241,0.3))"></div>
-            <div class="mockup-mini-line" style="width:50%"></div>
-            <div class="mockup-mini-line" style="width:30%"></div>
-          </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="screenshot-card rounded-xl overflow-hidden border border-white/[0.06] bg-zinc-900/60 card-hover opacity-0 translate-y-6">
+        <div class="screenshot-placeholder aspect-video bg-gradient-to-br from-indigo-500/20 via-zinc-900 to-indigo-500/10 flex items-center justify-center placeholder-img">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(129,140,248,0.3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        </div>
+        <div class="p-4">
+          <h3 class="text-sm font-semibold text-zinc-100 mb-1">Download Manager</h3>
+          <p class="text-xs text-zinc-400">Complete download list with progress bars, speed graphs, category filters, and search.</p>
         </div>
       </div>
-      <div class="showcase-info">
-        <h3>Media Streaming</h3>
-        <p>Stream video and audio while downloading. Built-in player with subtitle and quality controls.</p>
-      </div>
-    </div>
-    <div class="showcase-card">
-      <div class="showcase-preview">
-        <div class="mockup-mini">
-          <div class="mockup-mini-bar"><div class="mockup-mini-dot" style="background:#ef4444"></div><div class="mockup-mini-dot" style="background:#f59e0b"></div><div class="mockup-mini-dot" style="background:#10b981"></div></div>
-          <div class="mockup-mini-content" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <div style="height:100%;border-radius:4px;background:rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:4px;padding:6px"><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:50%"></div></div>
-            <div style="height:100%;border-radius:4px;background:rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:4px;padding:6px"><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:60%"></div></div>
-            <div style="height:100%;border-radius:4px;background:rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:4px;padding:6px"><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:40%"></div></div>
-            <div style="height:100%;border-radius:4px;background:rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:4px;padding:6px"><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:70%"></div></div>
-          </div>
+
+      <div class="screenshot-card rounded-xl overflow-hidden border border-white/[0.06] bg-zinc-900/60 card-hover opacity-0 translate-y-6">
+        <div class="screenshot-placeholder aspect-video bg-gradient-to-br from-cyan-500/20 via-zinc-900 to-indigo-500/10 flex items-center justify-center placeholder-img">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="p-4">
+          <h3 class="text-sm font-semibold text-zinc-100 mb-1">Media Streaming</h3>
+          <p class="text-xs text-zinc-400">Stream video and audio while downloading. Built-in player with subtitle and quality controls.</p>
         </div>
       </div>
-      <div class="showcase-info">
-        <h3>Plugin Store</h3>
-        <p>Discover, install, and manage plugins. Browse the catalog of UI apps and hook-based extensions.</p>
-      </div>
-    </div>
-    <div class="showcase-card">
-      <div class="showcase-preview">
-        <div class="mockup-mini">
-          <div class="mockup-mini-bar"><div class="mockup-mini-dot" style="background:#ef4444"></div><div class="mockup-mini-dot" style="background:#f59e0b"></div><div class="mockup-mini-dot" style="background:#10b981"></div></div>
-          <div class="mockup-mini-content">
-            <div style="display:flex;gap:6px;margin-bottom:4px"><div style="flex:1;height:40px;border-radius:4px;background:rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:var(--accent-light)">▶</div><div style="flex:1;height:40px;border-radius:4px;background:rgba(255,255,255,0.04)"></div><div style="flex:1;height:40px;border-radius:4px;background:rgba(255,255,255,0.04)"></div></div>
-            <div class="mockup-mini-line"></div>
-          </div>
+
+      <div class="screenshot-card rounded-xl overflow-hidden border border-white/[0.06] bg-zinc-900/60 card-hover opacity-0 translate-y-6">
+        <div class="screenshot-placeholder aspect-video bg-gradient-to-br from-purple-500/20 via-zinc-900 to-indigo-500/10 flex items-center justify-center placeholder-img">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,0.3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="p-4">
+          <h3 class="text-sm font-semibold text-zinc-100 mb-1">TV Series Browser</h3>
+          <p class="text-xs text-zinc-400">Browse by category, country, region, and language. Watch episodes in-app.</p>
         </div>
       </div>
-      <div class="showcase-info">
-        <h3>TV Series Browser</h3>
-        <p>Filter by category, country, region, and language. Browse featured and trending episodes.</p>
-      </div>
-    </div>
-    <div class="showcase-card">
-      <div class="showcase-preview">
-        <div class="mockup-mini">
-          <div class="mockup-mini-bar"><div class="mockup-mini-dot" style="background:#ef4444"></div><div class="mockup-mini-dot" style="background:#f59e0b"></div><div class="mockup-mini-dot" style="background:#10b981"></div></div>
-          <div class="mockup-mini-content">
-            <div style="display:flex;gap:6px;margin-bottom:6px"><div style="width:24px;height:24px;border-radius:4px;background:rgba(255,255,255,0.06)"></div><div style="flex:1"><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:40%"></div></div></div>
-            <div style="display:flex;gap:6px"><div style="width:24px;height:24px;border-radius:4px;background:rgba(255,255,255,0.06)"></div><div style="flex:1"><div class="mockup-mini-line"></div><div class="mockup-mini-line" style="width:30%"></div></div></div>
-          </div>
+
+      <div class="screenshot-card rounded-xl overflow-hidden border border-white/[0.06] bg-zinc-900/60 card-hover opacity-0 translate-y-6">
+        <div class="screenshot-placeholder aspect-video bg-gradient-to-br from-emerald-500/20 via-zinc-900 to-indigo-500/10 flex items-center justify-center placeholder-img">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(16,185,129,0.3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div class="p-4">
+          <h3 class="text-sm font-semibold text-zinc-100 mb-1">Music Downloader</h3>
+          <p class="text-xs text-zinc-400">Search YouTube and SoundCloud. Downloads with embedded artwork, ID3 tags.</p>
         </div>
       </div>
-      <div class="showcase-info">
-        <h3>Music Downloader</h3>
-        <p>Search YouTube and SoundCloud. Downloads with embedded artwork, ID3 tags, and lyrics.</p>
-      </div>
-    </div>
-    <div class="showcase-card">
-      <div class="showcase-preview">
-        <div class="mockup-mini">
-          <div class="mockup-mini-bar"><div class="mockup-mini-dot" style="background:#ef4444"></div><div class="mockup-mini-dot" style="background:#f59e0b"></div><div class="mockup-mini-dot" style="background:#10b981"></div></div>
-          <div class="mockup-mini-content" style="justify-content:center;align-items:center">
-            <div style="width:80%;height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin-bottom:6px"><div style="width:67%;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),#22d3ee)"></div></div>
-            <div class="mockup-mini-line" style="width:40%"></div>
-            <div style="display:flex;gap:12px;margin-top:4px"><div class="mockup-mini-line" style="width:30px;height:4px"></div><div class="mockup-mini-line" style="width:30px;height:4px"></div><div class="mockup-mini-line" style="width:30px;height:4px"></div></div>
-          </div>
+
+      <div class="screenshot-card rounded-xl overflow-hidden border border-white/[0.06] bg-zinc-900/60 card-hover opacity-0 translate-y-6">
+        <div class="screenshot-placeholder aspect-video bg-gradient-to-br from-amber-500/20 via-zinc-900 to-indigo-500/10 flex items-center justify-center placeholder-img">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(245,158,11,0.3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+        </div>
+        <div class="p-4">
+          <h3 class="text-sm font-semibold text-zinc-100 mb-1">Plugin Store</h3>
+          <p class="text-xs text-zinc-400">Discover, install, and manage plugins. Browse the catalog of UI apps and hook-based extensions.</p>
         </div>
       </div>
-      <div class="showcase-info">
-        <h3>Speed Test</h3>
-        <p>Measure download, upload, and latency against multiple servers with real-time graphs.</p>
+
+      <div class="screenshot-card rounded-xl overflow-hidden border border-white/[0.06] bg-zinc-900/60 card-hover opacity-0 translate-y-6">
+        <div class="screenshot-placeholder aspect-video bg-gradient-to-br from-pink-500/20 via-zinc-900 to-indigo-500/10 flex items-center justify-center placeholder-img">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(236,72,153,0.3)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="p-4">
+          <h3 class="text-sm font-semibold text-zinc-100 mb-1">Speed Test</h3>
+          <p class="text-xs text-zinc-400">Measure download, upload, and latency against multiple servers with real-time graphs.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Plugin Documentation -->
-<section id="plugins">
-  <div class="plugins-docs">
-    <h2>Plugin <span class="gradient-text">Developer Guide</span></h2>
-    <p class="section-subtitle">Extend ZenDownload with custom plugins. Write a JSON manifest, add hooks, or create full UI pages.</p>
+<!-- Tech Stack -->
+<section id="tech" class="relative py-20 md:py-28">
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(99,102,241,0.06),transparent)]"></div>
+  <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16">
+      <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-medium text-indigo-300 mb-4">Tech Stack</span>
+      <h2 class="text-3xl md:text-5xl font-extrabold tracking-[-0.02em] mb-4">Built with <span class="gradient-text">modern</span> technology</h2>
+      <p class="text-zinc-400 max-w-lg mx-auto">ZenDownload leverages battle-tested frameworks and libraries to deliver a fast, reliable experience.</p>
+    </div>
 
-    <div class="docs-grid">
-      <div class="docs-card">
-        <h3><span class="icon">📄</span> Manifest Format</h3>
-        <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.75rem">Place your plugin JSON in the app data plugins directory.</p>
-        <div class="code-block">
-<span class="comment">// ~/.local/share/com.zendownload.app/plugins/my-plugin.json</span><br>
-{<br>
-  <span class="key">"id"</span>: <span class="string">"my-plugin"</span>,<br>
-  <span class="key">"name"</span>: <span class="string">"My Plugin"</span>,<br>
-  <span class="key">"version"</span>: <span class="string">"1.0.0"</span>,<br>
-  <span class="key">"author"</span>: <span class="string">"You"</span>,<br>
-  <span class="key">"plugin_type"</span>: <span class="string">"webhook"</span>,<br>
-  <span class="key">"enabled"</span>: <span class="keyword">true</span>,<br>
-  <span class="key">"hooks"</span>: [<span class="string">"download.complete"</span>]<br>
-}
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] text-center opacity-0 translate-y-6 tech-card card-hover">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         </div>
-        <h3 style="margin-top:1rem;font-size:0.8rem">All Manifest Fields</h3>
-        <div class="code-block" style="font-size:0.68rem">
-| Field        | Type     | Required | Description                  |<br>
-|--------------|----------|----------|------------------------------|<br>
-| id           | string   | yes      | Unique plugin identifier      |<br>
-| name         | string   | yes      | Display name                  |<br>
-| version      | string   | yes      | SemVer version                |<br>
-| author       | string   | yes      | Creator name                  |<br>
-| description  | string   | no       | Short description             |<br>
-| homepage     | string   | no       | Project URL                   |<br>
-| plugin_type  | string   | yes      | See types below               |<br>
-| enabled      | boolean  | no       | Default true                  |<br>
-| hooks        | string[] | no       | Event hooks to subscribe      |<br>
-| config       | object   | no       | Default configuration values  |<br>
-| ui           | object   | no       | UI manifest (for ui plugins)  |
-        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">Tauri v2</h3>
+        <p class="text-xs text-zinc-500">Rust-powered desktop framework with native system webview for minimal binary size.</p>
       </div>
-
-      <div class="docs-card">
-        <h3><span class="icon">🔌</span> Plugin Types</h3>
-        <div class="code-block" style="font-size:0.68rem">
-| Type             | Purpose                                |<br>
-|------------------|----------------------------------------|<br>
-| <span class="string">extractor</span>      | Custom URL parsing/extraction         |<br>
-| <span class="string">postprocessor</span>  | Post-download actions (extract, scan) |<br>
-| <span class="string">webhook</span>        | Send events to external services       |<br>
-| <span class="string">notifier</span>       | Custom notifications (toast, sound)   |<br>
-| <span class="string">protocolhandler</span>| Custom protocol:// handling           |<br>
-| <span class="string">mirror</span>          | Alternative mirror detection           |<br>
-| <span class="string">ui</span>              | Register sidebar entries + pages       |
+      <div class="p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] text-center opacity-0 translate-y-6 tech-card card-hover">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
         </div>
-        <h3 style="margin-top:1rem;font-size:0.8rem">Available Hooks</h3>
-        <div class="code-block" style="font-size:0.68rem">
-| Hook                  | Description                             |<br>
-|-----------------------|-----------------------------------------|<br>
-| download.start        | A new download begins                  |<br>
-| download.complete     | A download finishes                    |<br>
-| download.error        | A download fails                       |<br>
-| url.extract           | URL processing for extraction          |<br>
-| file.postprocess      | After file is downloaded               |<br>
-| clipboard.detect      | Clipboard URL detection                |
-        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">React 19</h3>
+        <p class="text-xs text-zinc-500">Modern UI built with React 19, TypeScript, and Zustand for state management.</p>
       </div>
-
-      <div class="docs-card" style="grid-column:1/-1">
-        <h3><span class="icon">🎨</span> UI Plugins</h3>
-        <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.75rem">UI plugins register sidebar entries and render pages using built-in component types. Add a <code style="background:rgba(255,255,255,0.06);padding:0.1rem 0.3rem;border-radius:3px;font-size:0.7rem">ui</code> block to your manifest.</p>
-        <div class="code-block">
-{<br>
-  <span class="key">"plugin_type"</span>: <span class="string">"ui"</span>,<br>
-  <span class="key">"ui"</span>: {<br>
-    <span class="key">"sidebar_label"</span>: <span class="string">"Radio"</span>,<br>
-    <span class="key">"sidebar_icon"</span>: <span class="string">"Radio"</span>,<br>
-    <span class="key">"component_type"</span>: <span class="string">"radio"</span>,<br>
-    <span class="key">"page_config"</span>: {}<br>
-  }<br>
-}
+      <div class="p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] text-center opacity-0 translate-y-6 tech-card card-hover">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:0.75rem">
-          <div style="padding:0.75rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04)">
-            <div style="font-size:0.75rem;font-weight:600;margin-bottom:0.25rem;color:var(--accent-light)">Radio Player</div>
-            <div style="font-size:0.68rem;color:var(--text3)"><code style="background:rgba(255,255,255,0.06);padding:0.05rem 0.3rem;border-radius:2px;font-size:0.65rem">component_type: "radio"</code><br>Built-in station browser with play/pause, Now Playing display, and stop controls. 8 default stations included.</div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">Axum 0.7</h3>
+        <p class="text-xs text-zinc-500">Async HTTP server for internal API, streaming, and plugin webhook endpoints.</p>
+      </div>
+      <div class="p-5 rounded-xl bg-zinc-900/60 border border-white/[0.04] text-center opacity-0 translate-y-6 tech-card card-hover">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">SQLite</h3>
+        <p class="text-xs text-zinc-500">Local database via sqlx for download history, settings, and plugin config.</p>
+      </div>
+    </div>
+
+    <div class="mt-10 p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04]">
+      <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-zinc-500">
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>Rust</span>
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>TypeScript 5.8</span>
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Tailwind CSS v4</span>
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Vite 7</span>
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>librqbit 8.x</span>
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-pink-400"></span>reqwest 0.12</span>
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>tokio</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Plugins Section -->
+<section id="plugins" class="relative py-20 md:py-28 bg-zinc-900/30">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16">
+      <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-medium text-indigo-300 mb-4">Extensibility</span>
+      <h2 class="text-3xl md:text-5xl font-extrabold tracking-[-0.02em] mb-4">Plugin <span class="gradient-text">Developer Guide</span></h2>
+      <p class="text-zinc-400 max-w-lg mx-auto">Extend ZenDownload with custom plugins. Write a JSON manifest, add hooks, or create full UI pages.</p>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-4 mb-6">
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] gradient-border-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </div>
-          <div style="padding:0.75rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04)">
-            <div style="font-size:0.75rem;font-weight:600;margin-bottom:0.25rem;color:var(--accent-light)">RSS Reader</div>
-            <div style="font-size:0.68rem;color:var(--text3)"><code style="background:rgba(255,255,255,0.06);padding:0.05rem 0.3rem;border-radius:2px;font-size:0.65rem">component_type: "rss"</code><br>Read RSS/Atom feeds inline. Configurable feed list via <code style="background:rgba(255,255,255,0.06);padding:0.05rem 0.3rem;border-radius:2px;font-size:0.65rem">page_config.feeds</code>.</div>
+          <h3 class="text-sm font-semibold text-zinc-100">Manifest Format</h3>
+        </div>
+        <p class="text-xs text-zinc-500 mb-3">Place your plugin JSON in the app data plugins directory.</p>
+        <pre class="bg-black/30 rounded-lg p-3 text-[11px] leading-relaxed font-mono text-zinc-300 overflow-x-auto border border-white/[0.04]"><!--
+-->// ~/.local/share/com.zendownload.app/plugins/my-plugin.json
+{<br>  <span style="color:#818cf8">"id"</span>: <span style="color:#34d399">"my-plugin"</span>,<br>  <span style="color:#818cf8">"name"</span>: <span style="color:#34d399">"My Plugin"</span>,<br>  <span style="color:#818cf8">"version"</span>: <span style="color:#34d399">"1.0.0"</span>,<br>  <span style="color:#818cf8">"plugin_type"</span>: <span style="color:#34d399">"webhook"</span>,<br>  <span style="color:#818cf8">"hooks"</span>: [<span style="color:#34d399">"download.complete"</span>]<br>
+}</pre>
+        <div class="mt-4">
+          <h4 class="text-[11px] font-semibold text-zinc-300 mb-2">All Manifest Fields</h4>
+          <table class="w-full text-[10px] font-mono">
+            <thead><tr class="text-zinc-600 border-b border-white/[0.04]"><th class="text-left py-1 pr-3">Field</th><th class="text-left py-1 pr-3">Type</th><th class="text-left py-1">Description</th></tr></thead>
+            <tbody class="text-zinc-400">
+              <tr><td class="py-1 pr-3 text-indigo-300">id</td><td class="py-1 pr-3">string</td><td class="py-1">Unique identifier</td></tr>
+              <tr><td class="py-1 pr-3 text-indigo-300">name</td><td class="py-1 pr-3">string</td><td class="py-1">Display name</td></tr>
+              <tr><td class="py-1 pr-3 text-indigo-300">version</td><td class="py-1 pr-3">string</td><td class="py-1">SemVer version</td></tr>
+              <tr><td class="py-1 pr-3 text-indigo-300">plugin_type</td><td class="py-1 pr-3">string</td><td class="py-1">extractor / postprocessor / webhook / notifier / protocolhandler / mirror / ui</td></tr>
+              <tr><td class="py-1 pr-3 text-indigo-300">hooks</td><td class="py-1 pr-3">string[]</td><td class="py-1">Events to subscribe to</td></tr>
+              <tr><td class="py-1 pr-3 text-indigo-300">ui</td><td class="py-1 pr-3">object</td><td class="py-1">UI manifest (for ui type)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] gradient-border-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </div>
-          <div style="padding:0.75rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04)">
-            <div style="font-size:0.75rem;font-weight:600;margin-bottom:0.25rem;color:var(--accent-light)">Custom Page</div>
-            <div style="font-size:0.68rem;color:var(--text3)"><code style="background:rgba(255,255,255,0.06);padding:0.05rem 0.3rem;border-radius:2px;font-size:0.65rem">component_type: "custom"</code><br>Render raw HTML or an iframe. Set <code style="background:rgba(255,255,255,0.06);padding:0.05rem 0.3rem;border-radius:2px;font-size:0.65rem">page_config.html</code> or <code style="background:rgba(255,255,255,0.06);padding:0.05rem 0.3rem;border-radius:2px;font-size:0.65rem">page_config.iframe_url</code>.</div>
+          <h3 class="text-sm font-semibold text-zinc-100">Plugin Types & Hooks</h3>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <h4 class="text-[11px] font-semibold text-zinc-400 mb-2">Plugin Types</h4>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>extractor</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-cyan-400"></span>postprocessor</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-emerald-400"></span>webhook</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-amber-400"></span>notifier</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-purple-400"></span>protocolhandler</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-pink-400"></span>mirror</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-red-400"></span>ui</div>
+            </div>
+          </div>
+          <div>
+            <h4 class="text-[11px] font-semibold text-zinc-400 mb-2">Available Hooks</h4>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>download.start</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>download.complete</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>download.error</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>url.extract</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>file.postprocess</div>
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500"><span class="w-1 h-1 rounded-full bg-indigo-500"></span>clipboard.detect</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-4 mb-6">
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] gradient-border-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-zinc-100">UI Plugins</h3>
+        </div>
+        <p class="text-xs text-zinc-500 mb-3">UI plugins register sidebar entries and render pages using built-in component types. Add a <code class="bg-white/[0.06] px-1 py-0.5 rounded text-[10px] text-zinc-300">ui</code> block.</p>
+        <pre class="bg-black/30 rounded-lg p-3 text-[11px] leading-relaxed font-mono text-zinc-300 overflow-x-auto border border-white/[0.04]">{<br>  <span style="color:#818cf8">"plugin_type"</span>: <span style="color:#34d399">"ui"</span>,<br>  <span style="color:#818cf8">"ui"</span>: {<br>    <span style="color:#818cf8">"sidebar_label"</span>: <span style="color:#34d399">"Radio"</span>,<br>    <span style="color:#818cf8">"component_type"</span>: <span style="color:#34d399">"radio"</span><br>  }<br>
+}</pre>
+        <div class="grid grid-cols-2 gap-3 mt-4">
+          <div class="p-3 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+            <div class="text-[11px] font-semibold text-indigo-300 mb-1">Radio Player</div>
+            <div class="text-[10px] text-zinc-500">Built-in station browser with play/pause, Now Playing display. 8 default stations.</div>
+          </div>
+          <div class="p-3 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+            <div class="text-[11px] font-semibold text-indigo-300 mb-1">RSS Reader</div>
+            <div class="text-[10px] text-zinc-500">Read RSS/Atom feeds inline. Configurable feed list via page_config.feeds.</div>
           </div>
         </div>
       </div>
 
-      <div class="docs-card">
-        <h3><span class="icon">📦</span> Installation</h3>
-        <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.75rem">Plugins can be installed via the in-app Plugin Store or manually.</p>
-        <div class="code-block">
-<span class="comment"># Via Plugin Store (recommended)</span><br>
-Sidebar → Plugins → Browse Store → Install<br><br>
-<span class="comment"># Manual (Linux/macOS)</span><br>
-mkdir -p ~/.local/share/com.zendownload.app/plugins<br>
-cp my-plugin.json "$_"
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] gradient-border-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-zinc-100">Example: Discord Notifier</h3>
         </div>
-      </div>
-
-      <div class="docs-card">
-        <h3><span class="icon">🎯</span> Examples</h3>
-        <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.75rem">Two common plugin patterns.</p>
-        <div style="font-size:0.75rem;font-weight:600;color:var(--text);margin-bottom:0.25rem">Discord Webhook Notifier</div>
-        <div class="code-block" style="font-size:0.68rem">
-{<br>
-  <span class="key">"id"</span>: <span class="string">"discord"</span>,<br>
-  <span class="key">"name"</span>: <span class="string">"Discord"</span>,<br>
-  <span class="key">"plugin_type"</span>: <span class="string">"webhook"</span>,<br>
-  <span class="key">"hooks"</span>: [<span class="string">"download.complete"</span>],<br>
-  <span class="key">"config"</span>: {<span class="string">"url"</span>: <span class="string">""</span>}<br>
-}
-        </div>
-        <div style="font-size:0.75rem;font-weight:600;color:var(--text);margin-bottom:0.25rem;margin-top:0.75rem">Internet Radio Player</div>
-        <div class="code-block" style="font-size:0.68rem">
-{<br>
-  <span class="key">"id"</span>: <span class="string">"radio"</span>,<br>
-  <span class="key">"plugin_type"</span>: <span class="string">"ui"</span>,<br>
-  <span class="key">"ui"</span>: {<br>
-    <span class="key">"sidebar_label"</span>: <span class="string">"Radio"</span>,<br>
-    <span class="key">"sidebar_icon"</span>: <span class="string">"Radio"</span>,<br>
-    <span class="key">"component_type"</span>: <span class="string">"radio"</span><br>
-  }<br>
-}
+        <p class="text-xs text-zinc-500 mb-3">A webhook plugin that sends a notification to Discord when a download completes.</p>
+        <pre class="bg-black/30 rounded-lg p-3 text-[11px] leading-relaxed font-mono text-zinc-300 overflow-x-auto border border-white/[0.04]">{<br>  <span style="color:#818cf8">"id"</span>: <span style="color:#34d399">"discord"</span>,<br>  <span style="color:#818cf8">"name"</span>: <span style="color:#34d399">"Discord"</span>,<br>  <span style="color:#818cf8">"plugin_type"</span>: <span style="color:#34d399">"webhook"</span>,<br>  <span style="color:#818cf8">"hooks"</span>: [<span style="color:#34d399">"download.complete"</span>],<br>  <span style="color:#818cf8">"config"</span>: { <span style="color:#818cf8">"url"</span>: <span style="color:#34d399">""</span> }<br>
+}</pre>
+        <div class="mt-4 p-3 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+          <div class="flex items-center gap-2 text-xs text-zinc-400">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            Install: Sidebar → Plugins → Browse Store, or manual copy to plugins directory.
+          </div>
         </div>
       </div>
     </div>
@@ -598,64 +619,131 @@ cp my-plugin.json "$_"
 </section>
 
 <!-- CTA -->
-<section id="download" class="cta-section">
-  <h2>Ready to <span class="gradient-text">download</span>?</h2>
-  <p>Get started with ZenDownload today. Built for creators, developers, and anyone who needs a powerful download manager.</p>
-  <div class="hero-buttons">
-    <a href="#" class="btn btn-primary" onclick="alert('Build from source: git clone && bun install && bun run tauri build. See README for details.');return false">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Download for Linux
-    </a>
-    <a href="#" class="btn btn-secondary" onclick="alert('Coming soon. Build from source: see README.');return false">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      macOS (Intel)
-    </a>
-    <a href="#" class="btn btn-secondary" onclick="alert('Coming soon. Build from source: see README.');return false">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Windows
-    </a>
+<section id="download" class="relative py-20 md:py-28">
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_30%_at_50%_50%,rgba(99,102,241,0.08),transparent)]"></div>
+  <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center">
+    <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-medium text-indigo-300 mb-4">Download</span>
+    <h2 class="text-3xl md:text-5xl font-extrabold tracking-[-0.02em] mb-4">Ready to <span class="gradient-text">download</span>?</h2>
+    <p class="text-zinc-400 max-w-lg mx-auto mb-10">Get started with ZenDownload today. Built for creators, developers, and anyone who needs a powerful download manager.</p>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M4 16v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v8"/><path d="M8 16l4 4 4-4"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">Linux</h3>
+        <p class="text-xs text-zinc-500 mb-4">Debian package & AppImage</p>
+        <button onclick="alert('Build from source: git clone && bun install && bun run tauri build --bundles deb,appimage')" class="w-full px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs transition-all shadow-lg shadow-indigo-500/20 cursor-pointer border-none">
+          <span class="flex items-center justify-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download .deb
+          </span>
+        </button>
+      </div>
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">Windows</h3>
+        <p class="text-xs text-zinc-500 mb-4">MSI & NSIS installer</p>
+        <button onclick="alert('Coming soon. Build from source: see README.')" class="w-full px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs transition-all border border-white/[0.06] cursor-pointer border-none">
+          <span class="flex items-center justify-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download .msi
+          </span>
+        </button>
+      </div>
+      <div class="p-6 rounded-xl bg-zinc-900/60 border border-white/[0.04] card-hover sm:col-span-2 lg:col-span-1">
+        <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-zinc-100 mb-1">macOS</h3>
+        <p class="text-xs text-zinc-500 mb-4">Intel & Apple Silicon DMG</p>
+        <button onclick="alert('Coming soon. Build from source: see README.')" class="w-full px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs transition-all border border-white/[0.06] cursor-pointer border-none">
+          <span class="flex items-center justify-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download .dmg
+          </span>
+        </button>
+      </div>
+    </div>
+    <p class="text-xs text-zinc-600">Prebuilt binaries coming soon. For now, build from source with <code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-[11px] text-zinc-400">bun run tauri build</code>.</p>
   </div>
-  <p style="margin-top:1.5rem;color:var(--text3);font-size:0.8rem">Prebuilt binaries coming soon. For now, build from source with <code style="background:rgba(255,255,255,0.06);padding:0.1rem 0.3rem;border-radius:3px">bun run tauri build</code>.</p>
 </section>
 
 <!-- Footer -->
-<footer>
-  <p>ZenDownload — Open source <a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" rel="noopener">on GitHub</a>.</p>
-  <p style="margin-top:0.5rem;font-size:0.7rem">Built with Tauri, React, and Rust.</p>
+<footer class="border-t border-white/[0.04] py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M6 20V4l14 8z"/></svg>
+        </div>
+        <span class="text-sm font-semibold text-zinc-300">ZenDownload</span>
+      </div>
+      <div class="flex items-center gap-6 text-xs text-zinc-600">
+        <a href="https://github.com/swadhinbiswas/ZenDownload/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-zinc-400 transition-all no-underline">MIT License</a>
+        <a href="https://github.com/swadhinbiswas/ZenDownload" target="_blank" rel="noopener" class="hover:text-zinc-400 transition-all no-underline">GitHub</a>
+        <a href="https://github.com/swadhinbiswas/ZenDownload/issues" target="_blank" rel="noopener" class="hover:text-zinc-400 transition-all no-underline">Issues</a>
+      </div>
+      <p class="text-xs text-zinc-600">Built with Tauri, React, and Rust</p>
+    </div>
+  </div>
 </footer>
 
 <script>
 // Particles
-(function(){
+(function() {
   const container = document.getElementById('particles');
-  for(let i=0;i<30;i++){
+  if (!container) return;
+  for (let i = 0; i < 40; i++) {
     const p = document.createElement('div');
-    p.className = 'particle';
-    p.style.left = Math.random()*100+'%';
-    p.style.animationDelay = Math.random()*8+'s';
-    p.style.animationDuration = (6+Math.random()*8)+'s';
-    p.style.width = p.style.height = (2+Math.random()*4)+'px';
+    p.className = 'absolute rounded-full bg-indigo-500/20';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = '100%';
+    p.style.width = p.style.height = (2 + Math.random() * 4) + 'px';
+    p.style.animation = `particleFloat ${6 + Math.random() * 10}s infinite`;
+    p.style.animationDelay = Math.random() * 8 + 's';
+    p.style.opacity = '0';
     container.appendChild(p);
   }
 })();
 
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes particleFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0); }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-110vh) scale(1); }
+  }
+`;
+document.head.appendChild(style);
+
 // Scroll animations
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => {
-    if(e.isIntersecting){ e.target.classList.add('visible'); }
+    if (e.isIntersecting) {
+      e.target.style.transition = 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
   });
-}, { threshold: 0.1 });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+document.querySelectorAll('.feature-card, .screenshot-card, .tech-card').forEach((el, i) => {
+  el.style.transitionDelay = (i % 6) * 80 + 'ms';
+  observer.observe(el);
+});
 
-// Mockup progress bar animation
-let barPhase = 0;
+// Mockup progress animation
+let phase = 0;
 const bars = document.querySelectorAll('.mockup-bar');
 setInterval(() => {
-  barPhase = (barPhase + 1) % 100;
-  if(bars[0]) bars[0].style.width = (82 + Math.sin(barPhase*0.05)*3) + '%';
-  if(bars[1]) bars[1].style.width = (34 + Math.sin(barPhase*0.07 + 1)*4) + '%';
-  if(bars[3]) bars[3].style.width = (97 + Math.sin(barPhase*0.03 + 2)*2) + '%';
+  phase = (phase + 1) % 100;
+  if (bars[0]) bars[0].style.width = (82 + Math.sin(phase * 0.05) * 3) + '%';
+  if (bars[1]) bars[1].style.width = (34 + Math.sin(phase * 0.07 + 1) * 4) + '%';
+  if (bars[3]) bars[3].style.width = (97 + Math.sin(phase * 0.03 + 2) * 2) + '%';
 }, 100);
 </script>
 </body>

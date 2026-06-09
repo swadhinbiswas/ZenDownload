@@ -19,6 +19,7 @@ pub struct RuntimeSettings {
     pub default_conversion_preset: Option<String>,
     pub api_server_enabled: bool,
     pub api_server_port: u16,
+    pub max_concurrent_downloads: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -39,6 +40,7 @@ pub struct RuntimeSettingsInput {
     pub default_conversion_preset: Option<String>,
     pub api_server_enabled: Option<bool>,
     pub api_server_port: Option<u16>,
+    pub max_concurrent_downloads: Option<usize>,
 }
 
 pub async fn load_runtime_settings(pool: &SqlitePool) -> RuntimeSettings {
@@ -59,6 +61,7 @@ pub async fn load_runtime_settings(pool: &SqlitePool) -> RuntimeSettings {
         default_conversion_preset: None,
         api_server_enabled: false,
         api_server_port: 9527,
+        max_concurrent_downloads: 1,
     };
 
     let rows = sqlx::query_as::<_, (String, String)>("SELECT key, value FROM settings")
@@ -84,6 +87,7 @@ pub async fn load_runtime_settings(pool: &SqlitePool) -> RuntimeSettings {
             "defaultConversionPreset" => settings.default_conversion_preset = Some(value),
             "apiServerEnabled" => settings.api_server_enabled = value == "true",
             "apiServerPort" => settings.api_server_port = value.parse().unwrap_or(9527),
+            "maxConcurrentDownloads" => settings.max_concurrent_downloads = value.parse().unwrap_or(1),
             _ => {}
         }
     }
@@ -149,6 +153,10 @@ pub async fn save_runtime_settings(pool: &SqlitePool, input: RuntimeSettingsInpu
     }
     if let Some(v) = input.api_server_port {
         save_runtime_setting(pool, "apiServerPort", &v.to_string()).await?;
+    }
+    if let Some(v) = input.max_concurrent_downloads {
+        let clamped = v.clamp(1, 3);
+        save_runtime_setting(pool, "maxConcurrentDownloads", &clamped.to_string()).await?;
     }
 
     Ok(())

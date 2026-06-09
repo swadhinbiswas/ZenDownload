@@ -65,7 +65,7 @@
     "licenseFile": "",
     "windows": {
       "webviewInstallMode": {
-        "type": "embedBootstrapper"
+        "type": "downloadBootstrapper"
       },
       "wix": {
         "language": "en-US"

@@ -647,6 +647,10 @@ async fn get_history(engine: tauri::State<'_, DownloadEngine>) -> Result<Vec<cra
 
 #[tauri::command]
 async fn save_runtime_settings(settings: engine::runtime_settings::RuntimeSettingsInput, engine: tauri::State<'_, DownloadEngine>) -> Result<(), String> {
+    if let Some(max_concurrent) = settings.max_concurrent_downloads {
+        let clamped = max_concurrent.clamp(1, 3);
+        *engine.max_concurrent.lock().await = clamped;
+    }
     engine::runtime_settings::save_runtime_settings(&engine.db, settings).await
 }
 
@@ -1377,6 +1381,13 @@ pub fn run() {
                         println!("Database initialized successfully.");
                         let engine = DownloadEngine::new(pool, app_handle.clone());
                         let runtime_pool = engine.db.clone();
+
+                        // Load settings and apply max_concurrent BEFORE managing engine
+                        let settings = engine::runtime_settings::load_runtime_settings(&runtime_pool).await;
+                        let max_conc = settings.max_concurrent_downloads.clamp(1, 3);
+                        *engine.max_concurrent.lock().await = max_conc;
+                        println!("Max concurrent downloads set to {}", max_conc);
+
                         // Initialize torrent engine with default download path
                         let default_path = dirs::download_dir()
                             .map(|p| p.to_string_lossy().to_string())
@@ -1387,9 +1398,9 @@ pub fn run() {
                             println!("Torrent engine initialized successfully.");
                         }
                         engine.start_queue_poller();
+
                         app_handle.manage(engine);
 
-                        let settings = engine::runtime_settings::load_runtime_settings(&runtime_pool).await;
                         if settings.cloud_mirroring_enabled {
                             println!("Cloud mirroring enabled for {}", settings.cloud_mirroring_provider);
                         }

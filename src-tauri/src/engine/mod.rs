@@ -147,7 +147,7 @@ impl DownloadEngine {
                 builder.build().expect("Failed to build HTTP client")
             },
             active_downloads: Arc::new(StdMutex::new(std::collections::HashMap::new())),
-            max_concurrent: Arc::new(Mutex::new(16)),  // Increased from 8 for max throughput
+            max_concurrent: Arc::new(Mutex::new(1)),  // Default 1 sequential, user-configurable up to 3
             torrent_engine: Arc::new(tokio::sync::RwLock::new(torrent_engine)),
             watch_folder_manager: Arc::new(watch_folder::WatchFolderManager::new()),
             bandwidth_limiter: Arc::new(bandwidth::BandwidthLimiter::new(0)),

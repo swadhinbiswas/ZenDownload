@@ -86,3 +86,4 @@ lastsession.txt
 
 # Lock files
 package-lock.json
+*.AppImage
