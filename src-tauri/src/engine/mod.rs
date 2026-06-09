@@ -585,11 +585,21 @@ impl DownloadEngine {
 
     pub async fn pause_download(&self, id: String) -> Result<(), String> {
         let pool = self.db.clone();
-        let record = sqlx::query_as::<_, crate::db::DownloadRecord>("SELECT * FROM downloads WHERE id = ?")
+        let record: Option<crate::db::DownloadRecord> = sqlx::query_as("SELECT * FROM downloads WHERE id = ?")
             .bind(&id)
-            .fetch_one(&pool)
+            .fetch_optional(&pool)
             .await
             .map_err(|e| e.to_string())?;
+
+        let record = match record {
+            Some(r) => r,
+            None => {
+                let _ = self.app.emit("download-status", serde_json::json!({
+                    "id": id, "status": "Removed"
+                }));
+                return Ok(());
+            }
+        };
 
         if record.download_type == "torrent" {
             self.torrent_engine.read().await.pause_torrent(&id).await?;
@@ -612,17 +622,21 @@ impl DownloadEngine {
 
     pub async fn cancel_download(&self, id: String) -> Result<(), String> {
         let pool = self.db.clone();
-        let record = sqlx::query_as::<_, crate::db::DownloadRecord>("SELECT * FROM downloads WHERE id = ?")
+        let record: Option<crate::db::DownloadRecord> = sqlx::query_as("SELECT * FROM downloads WHERE id = ?")
             .bind(&id)
-            .fetch_one(&pool)
+            .fetch_optional(&pool)
             .await
             .map_err(|e| e.to_string())?;
+
+        let record = match record {
+            Some(r) => r,
+            None => return Ok(()),
+        };
 
         if record.download_type == "torrent" {
             let _ = self.torrent_engine.read().await.delete_torrent(&id, false).await;
         } else {
             self.remove_active_task(&id).await;
-            // Delete partial file
             let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
             if file_path.exists() {
                 let _ = tokio::fs::remove_file(&file_path).await;
@@ -644,20 +658,21 @@ impl DownloadEngine {
 
     pub async fn delete_download(&self, id: String) -> Result<(), String> {
         let pool = self.db.clone();
-        let record = sqlx::query_as::<_, crate::db::DownloadRecord>("SELECT * FROM downloads WHERE id = ?")
+        let record: Option<crate::db::DownloadRecord> = sqlx::query_as("SELECT * FROM downloads WHERE id = ?")
             .bind(&id)
-            .fetch_one(&pool)
+            .fetch_optional(&pool)
             .await
             .map_err(|e| e.to_string())?;
 
-        if record.download_type == "torrent" {
-            let _ = self.torrent_engine.read().await.delete_torrent(&id, true).await;
-        } else {
-            self.remove_active_task(&id).await;
-            // Delete partial file
-            let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
-            if file_path.exists() {
-                let _ = tokio::fs::remove_file(&file_path).await;
+        if let Some(record) = record {
+            if record.download_type == "torrent" {
+                let _ = self.torrent_engine.read().await.delete_torrent(&id, true).await;
+            } else {
+                self.remove_active_task(&id).await;
+                let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
+                if file_path.exists() {
+                    let _ = tokio::fs::remove_file(&file_path).await;
+                }
             }
         }
 
@@ -673,11 +688,16 @@ impl DownloadEngine {
         let pool = self.db.clone();
         
         // Fetch existing record
-        let record = sqlx::query_as::<_, crate::db::DownloadRecord>("SELECT * FROM downloads WHERE id = ?")
+        let record: Option<crate::db::DownloadRecord> = sqlx::query_as("SELECT * FROM downloads WHERE id = ?")
             .bind(&id)
-            .fetch_one(&pool)
+            .fetch_optional(&pool)
             .await
             .map_err(|e| e.to_string())?;
+
+        let record = match record {
+            Some(r) => r,
+            None => return Err("Download not found".to_string()),
+        };
 
         // Double check it's not already downloading
         if record.status == "Downloading" {
