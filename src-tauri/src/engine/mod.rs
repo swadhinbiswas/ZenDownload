@@ -215,33 +215,40 @@ impl DownloadEngine {
         }
 
         let new_id = uuid::Uuid::new_v4().to_string();
-        let mut filename = std::path::Path::new(&save_path).file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        
-        // If filename is empty, try to extract from URL
-        if filename.is_empty() {
-            if let Some(seg) = url.split('/').last() {
-                let mut decoded = String::new();
-                let mut chars = seg.chars().peekable();
-                while let Some(c) = chars.next() {
-                    if c == '%' {
-                        let hex: String = chars.by_ref().take(2).collect();
-                        if hex.len() == 2 {
-                            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
-                                decoded.push(byte as char);
-                                continue;
-                            }
+
+        // Ensure save_path is a directory, not a file path
+        let save_dir = {
+            let p = std::path::Path::new(&save_path);
+            if p.extension().is_some() {
+                // save_path looks like a full file path — use its parent as directory
+                p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| save_path.clone())
+            } else {
+                save_path.clone()
+            }
+        };
+
+        // Extract filename from URL (never from save_path which is a directory)
+        let mut filename = String::new();
+        if let Some(seg) = url.split('/').last() {
+            let mut decoded = String::new();
+            let mut chars = seg.chars().peekable();
+            while let Some(c) = chars.next() {
+                if c == '%' {
+                    let hex: String = chars.by_ref().take(2).collect();
+                    if hex.len() == 2 {
+                        if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                            decoded.push(byte as char);
+                            continue;
                         }
-                        decoded.push('%');
-                        decoded.push_str(&hex);
-                    } else {
-                        decoded.push(c);
                     }
+                    decoded.push('%');
+                    decoded.push_str(&hex);
+                } else {
+                    decoded.push(c);
                 }
-                if !decoded.is_empty() && decoded.len() < 200 && !decoded.contains('?') {
-                    filename = decoded;
-                }
+            }
+            if !decoded.is_empty() && decoded.len() < 200 && !decoded.contains('?') {
+                filename = decoded;
             }
         }
         
@@ -344,7 +351,7 @@ impl DownloadEngine {
             id: new_id.clone(),
             url: url.clone(),
             file_name: filename.clone(),
-            save_path: save_path.clone(),
+            save_path: save_dir.clone(),
             category: derived_category.clone(),
             total_size: None,
             downloaded: 0,
@@ -396,8 +403,7 @@ impl DownloadEngine {
         let app_clone = self.app.clone();
         let is_stream_for_meta = is_stream;
         let extra_meta_clone = extra_meta.clone();
-        let save_path_clone = save_path.clone();
-        
+
         tokio::spawn(async move {
             if !is_stream_for_meta {
                 return;
@@ -523,10 +529,15 @@ impl DownloadEngine {
         let proxy_aware_client = builder.build().unwrap_or_else(|_| self.client.clone());
 
         // Create download context
+        let ctx_save_path = if download_type == "http" {
+            format!("{}/{}", save_dir.trim_end_matches('/'), filename)
+        } else {
+            save_dir.clone()
+        };
         let ctx = Arc::new(self::http::DownloadContext {
             id: new_id.clone(),
             url: url.clone(),
-            save_path: save_path.clone(),
+            save_path: ctx_save_path,
             threads,
             client: proxy_aware_client,
             app: self.app.clone(),
