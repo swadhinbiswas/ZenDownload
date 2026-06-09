@@ -91,7 +91,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.action) {
     case 'send-download':
-      sendToZenDownload(message.url, message.pageUrl, message.title);
+      sendToZenDownload(message.url, message.pageUrl, message.title, message.extra_meta);
       sendResponse({ ok: true });
       break;
     case 'send-batch':
@@ -105,6 +105,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'get-detected':
       sendResponse({ files: Array.from(mediaTracker.values()) });
       break;
+    case 'probe-formats':
+      probeYouTubeFormats(message.url).then(formats => sendResponse({ formats }));
+      return true;
     case 'open-popup-panel':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'show-link-panel' }).catch(() => {});
@@ -144,7 +147,7 @@ function extractFileName(url) {
 }
 
 // === Send to ZenDownload ===
-async function sendToZenDownload(url, pageUrl, title) {
+async function sendToZenDownload(url, pageUrl, title, extraMeta) {
   const fileName = extractFileName(url);
   const ext = fileName.split('.').pop()?.toLowerCase();
 
@@ -153,7 +156,7 @@ async function sendToZenDownload(url, pageUrl, title) {
     save_path: null,
     threads: 4,
     category: guessCategory(ext),
-    extra_meta: { source: 'browser_extension', page_url: pageUrl, page_title: title },
+    extra_meta: { source: 'browser_extension', page_url: pageUrl, page_title: title, ...(extraMeta || {}) },
   };
 
   // Try native messaging first
@@ -205,6 +208,30 @@ async function sendBatchToZenDownload(urls, pageUrl) {
     count += results.reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0), 0);
   }
   showNotification('Sent to ZenDownload', `${count} of ${urls.length} files added`);
+}
+
+async function probeYouTubeFormats(url) {
+  // Try ZenDownload API probe endpoint
+  try {
+    const res = await fetch(`${ZENDOWNLOAD_API}/api/probe?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.formats && data.formats.length > 0) return data.formats;
+    }
+  } catch {}
+  // Try yt-dlp style info extraction via ZenDownload
+  try {
+    const res = await fetch(`${ZENDOWNLOAD_API}/api/info?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.formats && data.formats.length > 0) return data.formats;
+    }
+  } catch {}
+  return null;
 }
 
 async function checkServer() {
