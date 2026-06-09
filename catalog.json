@@ -1,0 +1,285 @@
+[
+  {
+    "id": "timer",
+    "name": "Timer",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Stopwatch, countdown timer, and pomodoro mode with customizable intervals and notifications.",
+    "homepage": "https://zendownload.eu.cc/plugin/timer",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "⏱",
+    "category": "productivity",
+    "tags": ["timer", "pomodoro", "stopwatch"],
+    "hooks": [],
+    "config_schema": [
+      { "key": "pomodoro_work", "type": "number", "label": "Work Duration (min)", "default": 25, "required": false },
+      { "key": "pomodoro_break", "type": "number", "label": "Break Duration (min)", "default": 5, "required": false }
+    ],
+    "ui": {
+      "sidebar_label": "Timer",
+      "sidebar_icon": "Timer",
+      "component_type": "timer",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "speedtest",
+    "name": "Speed Test",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Multi-server internet speed test with ping, download, upload measurements and live gauge visualization.",
+    "homepage": "https://zendownload.eu.cc/plugin/speedtest",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "📶",
+    "category": "utility",
+    "tags": ["speedtest", "network", "bandwidth"],
+    "hooks": [],
+    "config_schema": [
+      { "key": "test_server", "type": "select", "label": "Test Server", "options": [{ "label": "Auto", "value": "auto" }, { "label": "Cloudflare", "value": "cloudflare" }, { "label": "Google", "value": "google" }], "default": "auto", "required": false }
+    ],
+    "ui": {
+      "sidebar_label": "Speed Test",
+      "sidebar_icon": "Wifi",
+      "component_type": "speedtest",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "media-player",
+    "name": "Media Player",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "In-app video and audio player with playlist support, subtitles, and playback controls.",
+    "homepage": "https://zendownload.eu.cc/plugin/mediaplayer",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "🎬",
+    "category": "media",
+    "tags": ["player", "video", "audio", "media"],
+    "hooks": [],
+    "config_schema": [],
+    "ui": {
+      "sidebar_label": "Media Player",
+      "sidebar_icon": "Film",
+      "component_type": "mediaplayer",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "torrent-search",
+    "name": "Torrent Search",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Search multiple torrent indexers simultaneously and download results directly.",
+    "homepage": "https://zendownload.eu.cc/plugin/torrentsearch",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "🔍",
+    "category": "downloader",
+    "tags": ["torrent", "search", "p2p"],
+    "hooks": [],
+    "config_schema": [
+      { "key": "max_results", "type": "number", "label": "Max Results", "default": 30, "required": false }
+    ],
+    "ui": {
+      "sidebar_label": "Torrent Search",
+      "sidebar_icon": "Search",
+      "component_type": "torrentsearch",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "link-checker",
+    "name": "Link Checker",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Batch URL validator that checks link status, response time, and content type for multiple URLs.",
+    "homepage": "https://zendownload.eu.cc/plugin/linkchecker",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "🔗",
+    "category": "utility",
+    "tags": ["links", "validator", "batch"],
+    "hooks": [],
+    "config_schema": [
+      { "key": "timeout", "type": "number", "label": "Timeout (seconds)", "default": 10, "required": false }
+    ],
+    "ui": {
+      "sidebar_label": "Link Checker",
+      "sidebar_icon": "Link",
+      "component_type": "linkchecker",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "download-scheduler",
+    "name": "Download Scheduler",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Visual scheduler to plan downloads at specific times with recurring options.",
+    "homepage": "https://zendownload.eu.cc/plugin/scheduler",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "⏰",
+    "category": "productivity",
+    "tags": ["scheduler", "time", "planning"],
+    "hooks": [],
+    "config_schema": [],
+    "ui": {
+      "sidebar_label": "Scheduler",
+      "sidebar_icon": "Clock",
+      "component_type": "downloadscheduler",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "calculator",
+    "name": "Calculator",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "A basic calculator with arithmetic operations, memory functions, and keyboard support.",
+    "homepage": "https://zendownload.eu.cc/plugin/calculator",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "🧮",
+    "category": "utility",
+    "tags": ["calculator", "math", "tool"],
+    "hooks": [],
+    "config_schema": [],
+    "ui": {
+      "sidebar_label": "Calculator",
+      "sidebar_icon": "Calculator",
+      "component_type": "calculator",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "notes",
+    "name": "Notes",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "A simple notes editor with markdown support, auto-save, and local storage persistence.",
+    "homepage": "https://zendownload.eu.cc/plugin/notes",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "📝",
+    "category": "productivity",
+    "tags": ["notes", "editor", "markdown"],
+    "hooks": [],
+    "config_schema": [],
+    "ui": {
+      "sidebar_label": "Notes",
+      "sidebar_icon": "FileText",
+      "component_type": "notes",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "password-gen",
+    "name": "Password Generator",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Cryptographically secure password generator with strength meter, passphrase mode, and customization.",
+    "homepage": "https://zendownload.eu.cc/plugin/passwordgen",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "🔐",
+    "category": "utility",
+    "tags": ["password", "security", "generator"],
+    "hooks": [],
+    "config_schema": [
+      { "key": "default_length", "type": "number", "label": "Default Length", "default": 16, "required": false }
+    ],
+    "ui": {
+      "sidebar_label": "Password Gen",
+      "sidebar_icon": "Shield",
+      "component_type": "passwordgen",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "color-picker",
+    "name": "Color Picker",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Color picker with HEX, RGB, HSL support, palette generator, and eyedropper-style interface.",
+    "homepage": "https://zendownload.eu.cc/plugin/colorpicker",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "🎨",
+    "category": "utility",
+    "tags": ["color", "picker", "palette", "design"],
+    "hooks": [],
+    "config_schema": [],
+    "ui": {
+      "sidebar_label": "Color Picker",
+      "sidebar_icon": "Palette",
+      "component_type": "colorpicker",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "radio",
+    "name": "Radio Player",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Internet radio player with built-in station browser, 8 default stations, and play/pause controls.",
+    "homepage": "https://zendownload.eu.cc/plugin/radio",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "📻",
+    "category": "media",
+    "tags": ["radio", "stream", "audio", "music"],
+    "hooks": [],
+    "config_schema": [],
+    "ui": {
+      "sidebar_label": "Radio",
+      "sidebar_icon": "Radio",
+      "component_type": "radio",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "rss-reader",
+    "name": "RSS Reader",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Read RSS/Atom feeds inline with configurable feed list and article preview.",
+    "homepage": "https://zendownload.eu.cc/plugin/rss",
+    "plugin_type": "ui",
+    "downloads": 0,
+    "icon": "📡",
+    "category": "productivity",
+    "tags": ["rss", "feeds", "reader", "news"],
+    "hooks": [],
+    "config_schema": [
+      { "key": "feeds", "type": "text", "label": "Feed URLs (one per line)", "default": "", "required": false }
+    ],
+    "ui": {
+      "sidebar_label": "RSS Reader",
+      "sidebar_icon": "Rss",
+      "component_type": "rss",
+      "page_config": {}
+    }
+  },
+  {
+    "id": "discord-webhook",
+    "name": "Discord Notifier",
+    "version": "1.0.0",
+    "author": "ZenDownload",
+    "description": "Sends download completion notifications to a Discord channel via webhook.",
+    "homepage": "https://zendownload.eu.cc/plugin/discord",
+    "plugin_type": "webhook",
+    "downloads": 0,
+    "icon": "💬",
+    "category": "notification",
+    "tags": ["discord", "webhook", "notification"],
+    "hooks": ["download.complete"],
+    "config_schema": [
+      { "key": "url", "type": "text", "label": "Webhook URL", "required": true, "description": "Discord webhook URL" }
+    ],
+    "ui": null
+  }
+]

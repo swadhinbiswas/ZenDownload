@@ -3,7 +3,8 @@ import type { Plugin, ConfigOption, PluginHook, CatalogPlugin } from '../types/p
 
 export type { Plugin, ConfigOption, PluginHook, CatalogPlugin };
 
-export const PLUGIN_CATALOG_URL = 'https://raw.githubusercontent.com/swadhinbiswas/ZenDownload/main/catalog.json';
+export const PLUGIN_CATALOG_URL = 'https://api.zendownload.eu.cc/plugins';
+export const PLUGIN_CATALOG_FALLBACK_URL = 'https://raw.githubusercontent.com/swadhinbiswas/ZenDownload/main/catalog.json';
 
 export const pluginService = {
   list: () => invoke<Plugin[]>('list_plugins'),
@@ -17,6 +18,14 @@ export const pluginService = {
   getConfigSchema: (id: string) =>
     invoke<ConfigOption[]>('get_plugin_config_schema', { id }),
   listHooks: () => invoke<PluginHook[]>('list_plugin_hooks'),
-  fetchCatalog: (url?: string) =>
-    invoke<CatalogPlugin[]>('fetch_plugin_catalog', { url: url || PLUGIN_CATALOG_URL }),
+  fetchCatalog: async (url?: string) => {
+    if (url) {
+      return invoke<CatalogPlugin[]>('fetch_plugin_catalog', { url });
+    }
+    try {
+      return await invoke<CatalogPlugin[]>('fetch_plugin_catalog', { url: PLUGIN_CATALOG_URL });
+    } catch {
+      return invoke<CatalogPlugin[]>('fetch_plugin_catalog', { url: PLUGIN_CATALOG_FALLBACK_URL });
+    }
+  },
 };

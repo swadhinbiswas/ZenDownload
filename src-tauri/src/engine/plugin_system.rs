@@ -324,8 +324,66 @@ impl PluginManager {
             .send()
             .await
             .map_err(|e| format!("Failed to fetch catalog: {}", e))?;
-        let catalog: Vec<CatalogPlugin> = resp.json().await
-            .map_err(|e| format!("Failed to parse catalog: {}", e))?;
-        Ok(catalog)
+
+        if !resp.status().is_success() {
+            return Err(format!("Catalog server returned HTTP {}", resp.status()));
+        }
+
+        let content_type = resp.headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if !content_type.contains("json") && !content_type.contains("text") && !content_type.is_empty() {
+            return Err(format!("Expected JSON but got Content-Type: {}", content_type));
+        }
+
+        let body = resp.text().await
+            .map_err(|e| format!("Failed to read catalog response: {}", e))?;
+
+        if body.trim().is_empty() {
+            return Err("Catalog response is empty".to_string());
+        }
+
+        // Try direct array parse first
+        if let Ok(catalog) = serde_json::from_str::<Vec<CatalogPlugin>>(&body) {
+            return Ok(catalog);
+        }
+
+        // Try wrapped object: { "plugins": [...] }
+        #[derive(Deserialize)]
+        struct WrappedCatalog {
+            plugins: Vec<CatalogPlugin>,
+        }
+        if let Ok(wrapped) = serde_json::from_str::<WrappedCatalog>(&body) {
+            return Ok(wrapped.plugins);
+        }
+
+        // Try { "data": [...] }
+        #[derive(Deserialize)]
+        struct DataWrapped {
+            data: Vec<CatalogPlugin>,
+        }
+        if let Ok(wrapped) = serde_json::from_str::<DataWrapped>(&body) {
+            return Ok(wrapped.data);
+        }
+
+        // Try { "items": [...] }
+        #[derive(Deserialize)]
+        struct ItemsWrapped {
+            items: Vec<CatalogPlugin>,
+        }
+        if let Ok(wrapped) = serde_json::from_str::<ItemsWrapped>(&body) {
+            return Ok(wrapped.items);
+        }
+
+        let preview = if body.len() > 200 {
+            format!("{}...", &body[..200])
+        } else {
+            body.clone()
+        };
+        Err(format!(
+            "Invalid catalog format. Expected JSON array of plugins. Got: {}",
+            preview
+        ))
     }
 }
