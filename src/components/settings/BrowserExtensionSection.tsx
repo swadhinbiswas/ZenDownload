@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/button';
-import { Globe, Copy, Check, Package, MousePointerClick } from 'lucide-react';
+import { Globe, Copy, Check, Package, MousePointerClick, Zap, RefreshCw } from 'lucide-react';
+
+interface BrowserSetupResult {
+  browser: string;
+  name: string;
+  native_messaging: boolean;
+  extension_loaded: boolean;
+  message: string;
+}
 
 export function BrowserExtensionSection() {
   const [manifestPath, setManifestPath] = useState<string>('');
   const [manifest, setManifest] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
+  const [results, setResults] = useState<BrowserSetupResult[] | null>(null);
 
   const fetchManifest = async (browser: string) => {
     try {
@@ -29,6 +39,19 @@ export function BrowserExtensionSection() {
     }
   };
 
+  const runAutoSetup = async () => {
+    setSettingUp(true);
+    setResults(null);
+    try {
+      const res = await invoke<BrowserSetupResult[]>('setup_browser_extension');
+      setResults(res);
+    } catch (e: any) {
+      setResults([{ browser: '', name: 'Error', native_messaging: false, extension_loaded: false, message: String(e) }]);
+    } finally {
+      setSettingUp(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -37,17 +60,57 @@ export function BrowserExtensionSection() {
       </div>
       <p className="text-sm text-zinc-400">Install the browser extension to capture downloads and send them directly to ZenDownload.</p>
 
+      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-300 mt-0.5">
+            <Zap className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-white mb-1">One-Click Setup</div>
+            <p className="text-xs text-zinc-400 mb-3">
+              Automatically detect your installed browsers, register the native messaging host, and load the extension.
+            </p>
+            <Button onClick={runAutoSetup} disabled={settingUp} className="bg-indigo-600 hover:bg-indigo-500 text-white">
+              {settingUp ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
+              {settingUp ? 'Setting up...' : 'Auto-Setup Browser Extension'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {results && results.length > 0 && (
+        <div className="space-y-2">
+          {results.map((r, i) => (
+            <div key={i} className={`p-3 rounded-xl border text-sm ${
+              r.extension_loaded
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                : r.native_messaging
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                : 'bg-red-500/10 border-red-500/20 text-red-300'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Globe className="w-4 h-4" />
+                <span className="font-semibold">{r.name}</span>
+                {r.extension_loaded && <span className="ml-auto text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full">Extension loaded</span>}
+                {r.native_messaging && !r.extension_loaded && <span className="ml-auto text-[10px] bg-amber-500/20 px-2 py-0.5 rounded-full">Host registered</span>}
+              </div>
+              <p className="text-xs opacity-80">{r.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 max-w-2xl">
         <BrowserCard
           icon={<Globe className="w-5 h-5" />}
           name="Chrome / Edge / Brave"
-          desc="Install via Chrome Web Store"
+          desc="Show native messaging manifest"
           onClick={() => fetchManifest('chrome')}
         />
         <BrowserCard
           icon={<Globe className="w-5 h-5" />}
           name="Firefox"
-          desc="Install via Mozilla Add-ons"
+          desc="Show native messaging manifest"
           onClick={() => fetchManifest('firefox')}
         />
       </div>
