@@ -255,16 +255,25 @@ async fn run_download_loop(ctx: &Arc<DownloadContext>) -> Result<(), Box<dyn std
                 if resp.status().is_redirection() {
                     eprintln!("[http] Redirect detected: {}", resp.status());
                 }
-                // Rest probe from the final response
+                // Re-check content-type from the follow-up response
+                let follow_up_ct = resp.headers().get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .map(|s| s.to_string());
+
+                // If the follow-up response is binary, clear HTML detection flag
+                if let Some(ref ct) = follow_up_ct {
+                    if !ct.contains("text/html") {
+                        is_redirect_page = false;
+                    }
+                }
+
                 if size.is_none() {
                     size = resp.headers().get("content-length")
                         .and_then(|v| v.to_str().ok())
                         .and_then(|v| v.parse::<i64>().ok());
                 }
                 if content_type.is_none() {
-                    content_type = resp.headers().get("content-type")
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.to_string());
+                    content_type = follow_up_ct;
                 }
                 if filename_from_header.is_none() {
                     if let Some(cd) = resp.headers().get("content-disposition") {
@@ -286,6 +295,15 @@ async fn run_download_loop(ctx: &Arc<DownloadContext>) -> Result<(), Box<dyn std
             }
             Err(e) => {
                 eprintln!("[http] Direct GET after HTML detection failed: {}", e);
+            }
+        }
+    }
+
+    // If all probes returned HTML, this is a landing page, not a downloadable file
+    if is_redirect_page {
+        if let Some(ref ct) = content_type {
+            if ct.contains("text/html") {
+                return Err("Server returned an HTML page instead of a file. This URL is likely a website landing page, not a direct download link. Try using the actual file URL.".into());
             }
         }
     }
@@ -450,6 +468,7 @@ async fn run_single_thread_with_path(ctx: &Arc<DownloadContext>, save_path: Stri
         .unwrap_or(0);
 
     let mut response_opt = None;
+    let mut last_error = String::new();
     for _ in 0..3 {
         let mut req = ctx.client.get(&ctx.url);
         if downloaded > 0 {
@@ -467,22 +486,46 @@ async fn run_single_thread_with_path(ctx: &Arc<DownloadContext>, save_path: Stri
                 response_opt = Some(res);
                 break;
             }
-            Ok(_) if downloaded > 0 => {                // Range request might have failed if server doesn't support it anymore or file changed
-                // We should probably reset, but for simplicity, let's just reset and try without range
-                downloaded = 0;
-                match ctx.client.get(&ctx.url).send().await {
-                    Ok(res) if res.status().is_success() => {
-                        response_opt = Some(res);
-                        break;
+            Ok(res) => {
+                let status = res.status();
+                let ct = res.headers().get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("unknown");
+                last_error = format!("HTTP {} (Content-Type: {})", status.as_u16(), ct);
+                if downloaded > 0 {
+                    // Range request might have failed. Try without range.
+                    downloaded = 0;
+                    last_error = format!("{} - Retrying without Range...", last_error);
+                    match ctx.client.get(&ctx.url).send().await {
+                        Ok(res2) if res2.status().is_success() => {
+                            response_opt = Some(res2);
+                            break;
+                        }
+                        Ok(res2) => {
+                            last_error = format!("HTTP {} (Content-Type: {}) after reset", res2.status().as_u16(),
+                                res2.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("unknown"));
+                        }
+                        Err(e) => last_error = e.to_string(),
                     }
-                    _ => tokio::time::sleep(tokio::time::Duration::from_secs(2)).await,
+                } else {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 }
             }
-            _ => tokio::time::sleep(tokio::time::Duration::from_secs(2)).await,
+            Err(e) => {
+                last_error = e.to_string();
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            }
         }
     }
     
-    let mut response = response_opt.ok_or("Server returned error after 3 retries")?;
+    let mut response = response_opt.ok_or_else(|| format!("Server returned error after 3 retries: {}", last_error))?;
+
+    // Final check: if the response is HTML, this is a landing page not a file
+    if let Some(ct) = response.headers().get("content-type").and_then(|v| v.to_str().ok()) {
+        if ct.contains("text/html") && !ctx.url.contains(".htm") {
+            return Err(format!("Server returned an HTML page instead of a file (Content-Type: {})", ct).into());
+        }
+    }
 
     let mut dest = tokio::fs::OpenOptions::new()
         .create(true)
