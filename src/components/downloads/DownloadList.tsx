@@ -171,9 +171,16 @@ export function DownloadList() {
     }
 
     const getFullPath = (download: Download) => {
-        return download.file_name && !download.save_path.endsWith(download.file_name)
-            ? `${download.save_path.replace(/\/$/, '')}/${download.file_name}`
-            : download.save_path;
+        const savePath = download.save_path.replace(/\/+$/, '');
+        const fileName = download.file_name;
+        if (!fileName) return savePath;
+        // Get the last path component of save_path
+        const lastSlash = savePath.lastIndexOf('/');
+        const lastComponent = lastSlash >= 0 ? savePath.slice(lastSlash + 1) : savePath;
+        // If the last component matches file_name, save_path is the full file path
+        if (lastComponent === fileName) return savePath;
+        // Otherwise, save_path is a directory — join with file_name
+        return `${savePath}/${fileName}`;
     };
 
     const handleOpenFile = async (download: Download) => {

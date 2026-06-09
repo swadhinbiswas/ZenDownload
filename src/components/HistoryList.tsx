@@ -72,7 +72,9 @@ export function HistoryList() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="secondary" className="flex-1 bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.06]" onClick={async () => item.save_path && openPath(item.save_path)}>
+              <Button variant="secondary" className="flex-1 bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.06]" onClick={async () => item.save_path && openPath(
+                  item.file_name ? `${item.save_path.replace(/\/$/, '')}/${item.file_name}` : item.save_path
+              )}>
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open
               </Button>

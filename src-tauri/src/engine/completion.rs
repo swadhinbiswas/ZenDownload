@@ -197,8 +197,13 @@ pub async fn finalize_completed_download(
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "downloaded_file".to_string());
 
+    let save_dir = Path::new(&final_path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| final_path.clone());
+
     sqlx::query("UPDATE downloads SET save_path = ?, file_name = ? WHERE id = ?")
-        .bind(&final_path)
+        .bind(&save_dir)
         .bind(&final_file_name)
         .bind(download_id)
         .execute(pool)
@@ -251,12 +256,16 @@ pub async fn archive_download(
     pool: &sqlx::Pool<sqlx::Sqlite>,
     info: &CompletionInfo,
 ) -> Result<(), String> {
+    let save_dir = std::path::Path::new(&info.path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| info.path.clone());
     let _ = sqlx::query(
         "INSERT INTO history (id, download_id, file_name, save_path, url, total_size, completed_at, category) \
          SELECT ?, id, file_name, save_path, url, total_size, completed_at, category FROM downloads WHERE save_path = ? AND file_name = ?"
     )
     .bind(uuid::Uuid::new_v4().to_string())
-    .bind(&info.path)
+    .bind(&save_dir)
     .bind(&info.file_name)
     .execute(pool)
     .await
