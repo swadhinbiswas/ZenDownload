@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ZenDownload",
+  "productName": "zendownload",
   "version": "0.1.0",
   "identifier": "com.zendownload.app",
   "build": {
@@ -67,9 +67,6 @@
       "webviewInstallMode": {
         "type": "embedBootstrapper"
       },
-      "certificateThumbprint": "",
-      "digestAlgorithm": "sha256",
-      "timestampUrl": "",
       "wix": {
         "language": "en-US"
       },
