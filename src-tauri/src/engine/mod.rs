@@ -622,9 +622,14 @@ impl DownloadEngine {
             let _ = self.torrent_engine.read().await.delete_torrent(&id, false).await;
         } else {
             self.remove_active_task(&id).await;
+            // Delete partial file
+            let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
+            if file_path.exists() {
+                let _ = tokio::fs::remove_file(&file_path).await;
+            }
         }
 
-        sqlx::query("UPDATE downloads SET status = 'Error' WHERE id = ?")
+        sqlx::query("UPDATE downloads SET status = 'Cancelled' WHERE id = ?")
             .bind(&id)
             .execute(&pool)
             .await
@@ -632,7 +637,7 @@ impl DownloadEngine {
         
         let _ = self.app.emit("download-status", serde_json::json!({
             "id": id,
-            "status": "Error"
+            "status": "Cancelled"
         }));
         Ok(())
     }
@@ -649,6 +654,11 @@ impl DownloadEngine {
             let _ = self.torrent_engine.read().await.delete_torrent(&id, true).await;
         } else {
             self.remove_active_task(&id).await;
+            // Delete partial file
+            let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
+            if file_path.exists() {
+                let _ = tokio::fs::remove_file(&file_path).await;
+            }
         }
 
         sqlx::query("DELETE FROM downloads WHERE id = ?")
