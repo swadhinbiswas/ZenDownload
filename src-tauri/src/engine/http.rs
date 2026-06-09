@@ -115,195 +115,88 @@ async fn run_download_loop(ctx: &Arc<DownloadContext>) -> Result<(), Box<dyn std
     let mut accepts_ranges = false;
     let mut content_type: Option<String> = None;
     let mut filename_from_header: Option<String> = None;
-    let mut is_redirect_page = false;
     
-    // Try HEAD first (single attempt, longer timeout for slow servers)
-    let head_timeout = tokio::time::Duration::from_secs(15);
-    match tokio::time::timeout(head_timeout, ctx.client.head(&ctx.url).send()).await {
-        Ok(Ok(resp)) => {
-            if let Some(s) = resp.headers().get("content-length")
+    // Probe 1: HEAD request (best-effort metadata, never blocks the download)
+    let head_timeout = tokio::time::Duration::from_secs(10);
+    if let Ok(Ok(resp)) = tokio::time::timeout(head_timeout, ctx.client.head(&ctx.url).send()).await {
+        if resp.status().is_success() {
+            size = resp.headers().get("content-length")
                 .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse::<i64>().ok()) 
-            {
-                size = Some(s);
-            }
+                .and_then(|v| v.parse::<i64>().ok());
             accepts_ranges = resp.headers().get("accept-ranges")
                 .and_then(|v| v.to_str().ok()) == Some("bytes");
-            
             content_type = resp.headers().get("content-type")
                 .and_then(|v| v.to_str().ok())
                 .map(|s| s.to_string());
-            
             if let Some(cd) = resp.headers().get("content-disposition") {
                 if let Ok(cd_str) = cd.to_str() {
                     if let Some(pos) = cd_str.find("filename*=UTF-8''") {
                         let name = &cd_str[pos + 17..];
-                        if !name.is_empty() {
-                            filename_from_header = Some(urlencoding_decode(name));
-                        }
+                        if !name.is_empty() { filename_from_header = Some(urlencoding_decode(name)); }
                     } else if let Some(pos) = cd_str.find("filename=\"") {
                         let name = &cd_str[pos + 10..];
-                        if let Some(end) = name.find('"') {
-                            filename_from_header = Some(name[..end].to_string());
-                        }
+                        if let Some(end) = name.find('"') { filename_from_header = Some(name[..end].to_string()); }
                     } else if let Some(pos) = cd_str.find("filename=") {
                         let name = &cd_str[pos + 9..];
                         let name = name.trim_matches('"').trim_matches('\'');
-                        if !name.is_empty() {
-                            filename_from_header = Some(name.to_string());
-                        }
+                        if !name.is_empty() { filename_from_header = Some(name.to_string()); }
                     }
                 }
             }
-            
-            // Detect if server returned an HTML page (redirect/interstitial)
-            if let Some(ref ct) = content_type {
-                if ct.contains("text/html") {
-                    is_redirect_page = true;
-                }
-            }
-        }
-        Ok(Err(_)) => {
-            // HEAD failed, proceed to GET probe
-        }
-        Err(_) => {
-            // HEAD timed out, proceed to GET probe
         }
     }
     
-    // If HEAD didn't get size or got HTML, try GET with Range header (lightweight probe)
-    if size.is_none() || !accepts_ranges || filename_from_header.is_none() || is_redirect_page {
-        match ctx.client.get(&ctx.url)
+    // If HEAD returned HTML or failed, clear size/content_type so we re-probe via GET
+    if let Some(ref ct) = content_type {
+        if ct.contains("text/html") {
+            size = None;
+            content_type = None;
+            accepts_ranges = false;
+        }
+    }
+    
+    // Probe 2: GET with Range (best-effort for multi-thread support)
+    if size.is_none() || !accepts_ranges {
+        if let Ok(resp) = ctx.client.get(&ctx.url)
             .header("Range", "bytes=0-0")
             .send()
-            .await 
+            .await
         {
-            Ok(resp) => {
+            if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT || resp.status().is_success() {
                 if let Some(range) = resp.headers().get("content-range") {
                     if let Ok(range_str) = range.to_str() {
                         if let Some(total) = range_str.split('/').nth(1) {
-                            if let Ok(s) = total.parse::<i64>() {
-                                size = Some(s);
-                            }
+                            if let Ok(s) = total.parse::<i64>() { size = Some(s); }
                         }
                     }
                     accepts_ranges = true;
                 } else if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
                     accepts_ranges = true;
                 }
-                
                 if size.is_none() {
                     size = resp.headers().get("content-length")
                         .and_then(|v| v.to_str().ok())
                         .and_then(|v| v.parse::<i64>().ok());
                 }
-                
-                if !accepts_ranges {
-                    accepts_ranges = resp.headers().get("accept-ranges")
-                        .and_then(|v| v.to_str().ok()) == Some("bytes");
-                }
-                
-                if content_type.is_none() {
-                    content_type = resp.headers().get("content-type")
-                        .and_then(|v| v.to_str().ok())
-                        .map(|s| s.to_string());
-                    
-                    // Re-check for HTML
-                    if let Some(ref ct) = content_type {
-                        if ct.contains("text/html") {
-                            is_redirect_page = true;
-                        }
-                    }
-                }
-                
-                if filename_from_header.is_none() {
-                    if let Some(cd) = resp.headers().get("content-disposition") {
-                        if let Ok(cd_str) = cd.to_str() {
-                            if let Some(pos) = cd_str.find("filename*=UTF-8''") {
-                                let name = &cd_str[pos + 17..];
-                                if !name.is_empty() {
-                                    filename_from_header = Some(urlencoding_decode(name));
-                                }
-                            } else if let Some(pos) = cd_str.find("filename=\"") {
-                                let name = &cd_str[pos + 10..];
-                                if let Some(end) = name.find('"') {
-                                    filename_from_header = Some(name[..end].to_string());
-                                }
-                            } else if let Some(pos) = cd_str.find("filename=") {
-                                let name = &cd_str[pos + 9..];
-                                let name = name.trim_matches('"').trim_matches('\'');
-                                if !name.is_empty() {
-                                    filename_from_header = Some(name.to_string());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("[http] Range probe failed for {}: {}", ctx.url, e);
-            }
-        }
-    }
-    
-    // If server returned HTML for a non-HTML URL, it's likely an interstitial/redirect page
-    // Try a direct GET to follow any redirects and get the actual binary
-    if is_redirect_page {
-        eprintln!("[http] Server returned HTML for binary URL, following redirects: {}", ctx.url);
-        match ctx.client.get(&ctx.url).send().await {
-            Ok(resp) => {
-                if resp.status().is_redirection() {
-                    eprintln!("[http] Redirect detected: {}", resp.status());
-                }
-                // Re-check content-type from the follow-up response
-                let follow_up_ct = resp.headers().get("content-type")
+                // Check content-type from Range probe (skip if HTML)
+                let probe_ct = resp.headers().get("content-type")
                     .and_then(|v| v.to_str().ok())
                     .map(|s| s.to_string());
-
-                // If the follow-up response is binary, clear HTML detection flag
-                if let Some(ref ct) = follow_up_ct {
+                if let Some(ref ct) = probe_ct {
                     if !ct.contains("text/html") {
-                        is_redirect_page = false;
+                        if content_type.is_none() { content_type = probe_ct; }
                     }
-                }
-
-                if size.is_none() {
-                    size = resp.headers().get("content-length")
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|v| v.parse::<i64>().ok());
-                }
-                if content_type.is_none() {
-                    content_type = follow_up_ct;
                 }
                 if filename_from_header.is_none() {
                     if let Some(cd) = resp.headers().get("content-disposition") {
                         if let Ok(cd_str) = cd.to_str() {
                             if let Some(pos) = cd_str.find("filename*=UTF-8''") {
                                 let name = &cd_str[pos + 17..];
-                                if !name.is_empty() {
-                                    filename_from_header = Some(urlencoding_decode(name));
-                                }
-                            } else if let Some(pos) = cd_str.find("filename=\"") {
-                                let name = &cd_str[pos + 10..];
-                                if let Some(end) = name.find('"') {
-                                    filename_from_header = Some(name[..end].to_string());
-                                }
+                                if !name.is_empty() { filename_from_header = Some(urlencoding_decode(name)); }
                             }
                         }
                     }
                 }
-            }
-            Err(e) => {
-                eprintln!("[http] Direct GET after HTML detection failed: {}", e);
-            }
-        }
-    }
-
-    // If all probes returned HTML, this is a landing page, not a downloadable file
-    if is_redirect_page {
-        if let Some(ref ct) = content_type {
-            if ct.contains("text/html") {
-                return Err("Server returned an HTML page instead of a file. This URL is likely a website landing page, not a direct download link. Try using the actual file URL.".into());
             }
         }
     }

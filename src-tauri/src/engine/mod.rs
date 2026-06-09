@@ -138,7 +138,7 @@ impl DownloadEngine {
                     // Buffer sizes
                     .http2_initial_stream_window_size(16 * 1024 * 1024)  // 16 MB stream window
                     .http2_initial_connection_window_size(32 * 1024 * 1024)  // 32 MB connection window
-                    .user_agent("ZenDownload/1.0 (Max Performance)");
+                    .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
                 if let Ok(proxy_url) = std::env::var("HTTPS_PROXY").or(std::env::var("https_proxy")) {
                     if let Ok(proxy) = reqwest::Proxy::https(&proxy_url) {
                         builder = builder.proxy(proxy);
