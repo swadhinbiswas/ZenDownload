@@ -32,6 +32,17 @@ jobs:
       - name: Frontend install + type check
         run: |
           bun install
+          # Verify critical UI deps actually landed in node_modules.
+          # `bun install` can silently skip packages with platform-specific
+          # optional deps; this catches that before tsc reports confusing
+          # "Cannot find module" errors for 50+ files.
+          for pkg in react @base-ui/react zustand tailwind-merge clsx class-variance-authority lucide-react @tauri-apps/api; do
+            if [ ! -d "node_modules/$pkg" ]; then
+              echo "::error::Missing dependency: $pkg - running bun install --force"
+              bun install --force
+              break
+            fi
+          done
           bun run tsc --noEmit
 
       - name: Rust check
