@@ -1029,7 +1029,7 @@ async fn delete_user_playlist(id: i64, engine: tauri::State<'_, DownloadEngine>)
 }
 
 #[tauri::command]
-async fn import_custom_m3u(url: String, country_code: String, engine: tauri::State<'_, DownloadEngine>) -> Result<Vec<engine::m3u::M3uEntry>, String> {
+async fn import_custom_m3u(url: String, country_code: String, _engine: tauri::State<'_, DownloadEngine>) -> Result<Vec<engine::m3u::M3uEntry>, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
         .build()
