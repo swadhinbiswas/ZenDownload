@@ -308,7 +308,7 @@ Sync completed downloads to Google Drive automatically.
 ### Download Manager
 *Active queue with multi-protocol downloads, live stats, and per-file controls.*
 
-<img src="assets/screenshots/downloads.svg" alt="Download Manager" width="100%"/>
+<img src="assets/screenshots/dashboard.png" alt="Download Manager" width="100%"/>
 
 <br/>
 
@@ -319,31 +319,40 @@ Sync completed downloads to Google Drive automatically.
 
 <br/>
 
-### Music Downloader
-*Search YouTube and SoundCloud, download with full ID3 metadata.*
+### Capture &amp; Grab
+*Batch import, site grabber, full-site grabber, and stream detection.*
 
-<img src="assets/screenshots/music.svg" alt="Music Downloader" width="100%"/>
+<img src="assets/screenshots/batchimport.png" alt="Batch Import" width="49%"/>
+<img src="assets/screenshots/grabber.png" alt="Grabber" width="49%"/>
+<br/>
+<img src="assets/screenshots/fullsitegrabber.png" alt="Full Site Grabber" width="49%"/>
+<img src="assets/screenshots/streamdownloader.png" alt="Stream Downloader" width="49%"/>
 
 <br/>
 
-### Speed Test
-*Multi-server benchmark with live throughput graph.*
+### Music &amp; Playlists
+*Search YouTube and SoundCloud, download with full ID3 metadata and cover art.*
 
-<img src="assets/screenshots/speedtest.svg" alt="Speed Test" width="100%"/>
-
-<br/>
-
-### Plugin Store
-*Extend ZenDownload without forking — install community plugins with one click.*
-
-<img src="assets/screenshots/plugins.svg" alt="Plugin Store" width="100%"/>
+<img src="assets/screenshots/musicdownloade.png" alt="Music Downloader" width="49%"/>
+<img src="assets/screenshots/playlistdownloade.png" alt="Playlist Downloader" width="49%"/>
 
 <br/>
 
-### Settings & Theming
+### Live TV &amp; Subscriptions
+*IPTV channels, RSS feeds, and automated profiling rules.*
+
+<img src="assets/screenshots/livetv.png" alt="Live TV" width="49%"/>
+<img src="assets/screenshots/rssfeed.png" alt="RSS Feed" width="49%"/>
+<br/>
+<img src="assets/screenshots/profiling.png" alt="Profiling" width="49%"/>
+&nbsp;
+
+<br/>
+
+### Settings &amp; Theming
 *12 accent colors, glass effects, adjustable corner radius — make it yours.*
 
-<img src="assets/screenshots/settings.svg" alt="Settings" width="100%"/>
+<img src="assets/screenshots/settings.png" alt="Settings" width="100%"/>
 
 <br/>
 
