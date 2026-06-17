@@ -1,14 +1,14 @@
 use axum::{
-    extract::{Path, State},
-    http::{HeaderValue, Method, StatusCode},
-    response::IntoResponse,
+    extract::{Path, Query, State},
+    http::{Method, StatusCode},
     response::Json as AxumJson,
-    routing::{get, post, delete},
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -16,6 +16,7 @@ use tower_http::cors::{Any, CorsLayer};
 pub struct ApiState {
     pub db: SqlitePool,
     pub api_key: Arc<RwLock<Option<String>>>,
+    pub app: AppHandle,
 }
 
 #[derive(Deserialize)]
@@ -24,6 +25,8 @@ pub struct AddDownloadRequest {
     pub save_path: Option<String>,
     pub threads: Option<usize>,
     pub category: Option<String>,
+    pub extra_meta: Option<String>,
+    pub download_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -94,9 +97,11 @@ pub fn create_router(state: ApiState) -> Router {
         .route("/api/login", post(login_handler))
         .route("/api/downloads", get(list_downloads).post(add_download_handler))
         .route("/api/downloads/:id", get(get_download).delete(delete_download))
-        .route("/api/downloads/:id/pause", post(pause_download))
-        .route("/api/downloads/:id/resume", post(resume_download))
-        .route("/api/downloads/:id/cancel", post(cancel_download))
+        .route("/api/downloads/:id/pause", post(pause_download_api))
+        .route("/api/downloads/:id/resume", post(resume_download_api))
+        .route("/api/downloads/:id/cancel", post(cancel_download_api))
+        .route("/api/probe", get(probe_url_handler).post(probe_url_post_handler))
+        .route("/api/info", get(info_url_handler))
         .route("/api/stats", get(get_stats))
         .route("/api/settings", get(get_settings).post(update_settings))
         .route("/api/health", get(health_check))
@@ -171,28 +176,61 @@ async fn add_download_handler(
     State(state): State<ApiState>,
     AxumJson(payload): AxumJson<AddDownloadRequest>,
 ) -> Result<AxumJson<ApiResponse<String>>, StatusCode> {
-    let id = uuid::Uuid::new_v4().to_string();
     let save_path = payload.save_path.unwrap_or_else(|| {
-        dirs::download_dir()
+        // Use category-specific path or system downloads
+        let default = dirs::download_dir()
             .map(|d| d.to_string_lossy().to_string())
-            .unwrap_or_else(|| ".".to_string())
+            .unwrap_or_else(|| ".".to_string());
+        default
     });
 
-    sqlx::query("INSERT INTO downloads (id, url, file_name, save_path, status, downloaded, total_size, created_at, category, download_type, connections, speed_limit, priority, extra_meta, retry_count) VALUES (?, ?, '', ?, 'Queued', 0, NULL, datetime('now'), ?, 'http', ?, 0, 1, NULL, 0)")
-        .bind(&id)
-        .bind(&payload.url)
-        .bind(&save_path)
-        .bind(&payload.category)
-        .bind(payload.threads.unwrap_or(4) as i64)
-        .execute(&state.db)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let threads = payload.threads.unwrap_or(4);
 
-    Ok(AxumJson(ApiResponse {
-        success: true,
-        data: Some(id),
-        error: None,
-    }))
+    // Use the engine's add_download method for proper handling
+    if let Some(engine) = state.app.try_state::<crate::engine::DownloadEngine>() {
+        match engine.add_download(
+            payload.url,
+            save_path,
+            threads,
+            payload.category,
+            payload.extra_meta,
+        ).await {
+            Ok(id) => {
+                // Refresh the frontend download list
+                let _ = state.app.emit("downloads-updated", ());
+                Ok(AxumJson(ApiResponse {
+                    success: true,
+                    data: Some(id),
+                    error: None,
+                }))
+            }
+            Err(e) => Ok(AxumJson(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e),
+            })),
+        }
+    } else {
+        // Engine not available — fall back to raw INSERT
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO downloads (id, url, file_name, save_path, status, downloaded, total_size, created_at, category, download_type, connections, speed_limit, priority, extra_meta, retry_count) VALUES (?, ?, '', ?, 'Queued', 0, NULL, datetime('now'), ?, ?, ?, 0, 1, ?, 0)")
+            .bind(&id)
+            .bind(&payload.url)
+            .bind(&save_path)
+            .bind(&payload.category)
+            .bind(payload.download_type.as_deref().unwrap_or("http"))
+            .bind(threads as i64)
+            .bind(&payload.extra_meta)
+            .execute(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        Ok(AxumJson(ApiResponse {
+            success: true,
+            data: Some(id),
+            error: None,
+        }))
+    }
 }
 
 async fn get_download(
@@ -239,52 +277,165 @@ async fn delete_download(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<AxumJson<ApiResponse<()>>, StatusCode> {
-    sqlx::query("DELETE FROM downloads WHERE id = ?")
-        .bind(&id)
-        .execute(&state.db)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if let Some(engine) = state.app.try_state::<crate::engine::DownloadEngine>() {
+        engine.delete_download(id).await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    } else {
+        sqlx::query("DELETE FROM downloads WHERE id = ?")
+            .bind(&id)
+            .execute(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
 
     Ok(AxumJson(ApiResponse { success: true, data: None, error: None }))
 }
 
-async fn pause_download(
+async fn pause_download_api(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<AxumJson<ApiResponse<()>>, StatusCode> {
-    sqlx::query("UPDATE downloads SET status = 'Paused' WHERE id = ? AND status = 'Downloading'")
-        .bind(&id)
-        .execute(&state.db)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if let Some(engine) = state.app.try_state::<crate::engine::DownloadEngine>() {
+        engine.pause_download(id).await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    } else {
+        sqlx::query("UPDATE downloads SET status = 'Paused' WHERE id = ? AND status = 'Downloading'")
+            .bind(&id)
+            .execute(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
 
     Ok(AxumJson(ApiResponse { success: true, data: None, error: None }))
 }
 
-async fn resume_download(
+async fn resume_download_api(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<AxumJson<ApiResponse<()>>, StatusCode> {
-    sqlx::query("UPDATE downloads SET status = 'Queued' WHERE id = ? AND status = 'Paused'")
-        .bind(&id)
-        .execute(&state.db)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if let Some(engine) = state.app.try_state::<crate::engine::DownloadEngine>() {
+        engine.resume_download(id).await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    } else {
+        sqlx::query("UPDATE downloads SET status = 'Queued' WHERE id = ? AND status = 'Paused'")
+            .bind(&id)
+            .execute(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
 
     Ok(AxumJson(ApiResponse { success: true, data: None, error: None }))
 }
 
-async fn cancel_download(
+async fn cancel_download_api(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<AxumJson<ApiResponse<()>>, StatusCode> {
-    sqlx::query("UPDATE downloads SET status = 'Cancelled' WHERE id = ? AND status IN ('Queued', 'Downloading')")
-        .bind(&id)
-        .execute(&state.db)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if let Some(engine) = state.app.try_state::<crate::engine::DownloadEngine>() {
+        engine.cancel_download(id).await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    } else {
+        sqlx::query("UPDATE downloads SET status = 'Cancelled' WHERE id = ? AND status IN ('Queued', 'Downloading')")
+            .bind(&id)
+            .execute(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
 
     Ok(AxumJson(ApiResponse { success: true, data: None, error: None }))
+}
+
+#[derive(Deserialize)]
+struct ProbeQuery {
+    url: String,
+}
+
+async fn probe_url_handler(
+    State(state): State<ApiState>,
+    Query(query): Query<ProbeQuery>,
+) -> Result<AxumJson<ApiResponse<serde_json::Value>>, StatusCode> {
+    let url = query.url;
+    let app = &state.app;
+    match crate::engine::stream::probe_stream_url(&url, None, None, None, app).await {
+        Ok(metadata) => Ok(AxumJson(ApiResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "title": metadata.title,
+                "thumbnail": metadata.thumbnail,
+                "duration": metadata.duration,
+                "formats": metadata.formats.iter().map(|f| {
+                    serde_json::json!({
+                        "format_id": f.format_id,
+                        "resolution": f.resolution,
+                        "extension": f.ext,
+                        "filesize": f.filesize,
+                        "quality_label": f.format_note,
+                        "vcodec": f.vcodec,
+                        "acodec": f.acodec,
+                        "width": f.width,
+                        "height": f.height,
+                        "fps": f.fps,
+                    })
+                }).collect::<Vec<_>>(),
+            })),
+            error: None,
+        })),
+        Err(e) => Ok(AxumJson(ApiResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        })),
+    }
+}
+
+async fn info_url_handler(
+    State(state): State<ApiState>,
+    Query(query): Query<ProbeQuery>,
+) -> Result<AxumJson<ApiResponse<serde_json::Value>>, StatusCode> {
+    probe_url_handler(State(state), Query(query)).await
+}
+
+#[derive(Deserialize)]
+struct ProbePostBody {
+    url: String,
+    extra_meta: Option<String>,
+}
+
+async fn probe_url_post_handler(
+    State(state): State<ApiState>,
+    AxumJson(body): AxumJson<ProbePostBody>,
+) -> Result<AxumJson<ApiResponse<serde_json::Value>>, StatusCode> {
+    let app = &state.app;
+    match crate::engine::stream::probe_stream_url(&body.url, None, None, body.extra_meta, app).await {
+        Ok(metadata) => Ok(AxumJson(ApiResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "title": metadata.title,
+                "thumbnail": metadata.thumbnail,
+                "duration": metadata.duration,
+                "formats": metadata.formats.iter().map(|f| {
+                    serde_json::json!({
+                        "format_id": f.format_id,
+                        "resolution": f.resolution,
+                        "extension": f.ext,
+                        "filesize": f.filesize,
+                        "quality_label": f.format_note,
+                        "vcodec": f.vcodec,
+                        "acodec": f.acodec,
+                        "width": f.width,
+                        "height": f.height,
+                        "fps": f.fps,
+                    })
+                }).collect::<Vec<_>>(),
+            })),
+            error: None,
+        })),
+        Err(e) => Ok(AxumJson(ApiResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        })),
+    }
 }
 
 async fn get_stats(
@@ -356,10 +507,11 @@ async fn update_settings(
     Ok(AxumJson(ApiResponse { success: true, data: None, error: None }))
 }
 
-pub async fn start_api_server(db: SqlitePool, port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn start_api_server(db: SqlitePool, port: u16, app: AppHandle) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let state = ApiState {
         db,
         api_key: Arc::new(RwLock::new(None)),
+        app,
     };
 
     let router = create_router(state);

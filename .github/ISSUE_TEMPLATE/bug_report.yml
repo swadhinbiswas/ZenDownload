@@ -1,0 +1,81 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "bug: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the details below.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Which version are you running? (`zendownload --version` or check Settings → About)
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Linux (AppImage)
+        - Linux (deb)
+        - Linux (rpm)
+        - Linux (source build)
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear, concise description of what happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: |
+        1. Go to '...'
+        2. Click '...'
+        3. See error
+      placeholder: |
+        1. Open the app
+        2. Click Add Download
+        3. Enter URL '...'
+        4. Notice the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs & Output
+      description: |
+        Paste any relevant terminal output. On Linux/macOS, run from terminal to see logs:
+        ```bash
+        zendownload 2>&1 | tee zen.log
+        ```
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, URLs that trigger the issue, system info, etc.

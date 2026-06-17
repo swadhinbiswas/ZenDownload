@@ -33,6 +33,8 @@ struct StreamExtraMeta {
     cookies_path: Option<String>,
     #[serde(rename = "proxyUrl")]
     proxy_url: Option<String>,
+    #[serde(rename = "cookies")]
+    cookies: Option<String>,
     #[serde(rename = "playlistStart")]
     playlist_start: Option<usize>,
     #[serde(rename = "playlistEnd")]
@@ -84,6 +86,23 @@ pub struct PlaylistMetadata {
 struct StatusPayload {
     id: String,
     status: String,
+}
+
+/// Build yt-dlp --add-header "Cookie: ..." arguments from a raw cookie string.
+/// Much more reliable than writing Netscape cookie files (which Python's buggy
+/// http.cookiejar often fails to parse).
+fn add_cookie_headers(command: &mut Command, raw_cookies: &str) {
+    for pair in raw_cookies.split(';') {
+        let pair = pair.trim();
+        if pair.is_empty() { continue; }
+        if let Some((name, value)) = pair.split_once('=') {
+            let name = name.trim();
+            let value = value.trim();
+            // Skip empty or suspicious cookies
+            if name.is_empty() || name.len() > 256 || value.is_empty() { continue; }
+            command.arg("--add-header").arg(format!("Cookie:{}={}", name, value));
+        }
+    }
 }
 
 pub async fn get_ytdlp_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -393,6 +412,13 @@ pub async fn probe_stream_url(
         }
     }
 
+    // Raw cookies from browser extension
+    if let Some(ref raw_cookies) = extra_meta.cookies {
+        if !raw_cookies.is_empty() {
+            add_cookie_headers(&mut command, raw_cookies);
+        }
+    }
+
     if let Some(proxy_url) = extra_meta.proxy_url.as_ref() {
         if !proxy_url.is_empty() {
             command.arg("--proxy").arg(proxy_url);
@@ -530,6 +556,12 @@ pub async fn probe_stream_metadata(
     if let Some(ref path) = extra_meta.cookies_path {
         if !path.is_empty() {
             command.arg("--cookies").arg(path);
+        }
+    }
+    // Raw cookies from browser extension
+    if let Some(ref raw_cookies) = extra_meta.cookies {
+        if !raw_cookies.is_empty() {
+            add_cookie_headers(&mut command, raw_cookies);
         }
     }
     if let Some(ref proxy_url) = extra_meta.proxy_url {
@@ -714,6 +746,13 @@ pub async fn probe_playlist_url(
         }
     }
 
+    // Raw cookies from browser extension
+    if let Some(ref raw_cookies) = extra_meta.cookies {
+        if !raw_cookies.is_empty() {
+            add_cookie_headers(&mut command, raw_cookies);
+        }
+    }
+
     if let Some(proxy_url) = extra_meta.proxy_url.as_ref() {
         if !proxy_url.is_empty() {
             command.arg("--proxy").arg(proxy_url);
@@ -876,7 +915,7 @@ fn parse_speed_str(s: &str) -> f64 {
     0.0
 }
 
-pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext>) {
+pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext>, cancel_flag: Arc<std::sync::atomic::AtomicBool>) {
     println!("Starting yt-dlp download for {}", ctx.url);
 
     // Safety net: validate URL isn't DRM-protected
@@ -974,6 +1013,12 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
             command.arg("--cookies").arg(path);
         }
     }
+    // Raw cookies from browser extension (written to temp file)
+    if let Some(ref raw_cookies) = extra_meta.cookies {
+        if !raw_cookies.is_empty() {
+            add_cookie_headers(&mut command, raw_cookies);
+        }
+    }
 
     if let Some(ref proxy_url) = extra_meta.proxy_url {
         if !proxy_url.is_empty() {
@@ -1001,10 +1046,9 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
         command.arg("--no-embed-subs");
     }
 
-    // Embeds
-    command.arg("--write-thumbnail");
-    command.arg("--convert-thumbnails").arg("jpg");
-    command.arg(if extra_meta.embed_thumbnail.unwrap_or(true) { "--embed-thumbnail" } else { "--no-embed-thumbnail" });
+    // Embeds (thumbnail embed disabled — thumbnails stored in DB via metadata probe)
+    command.arg("--no-write-thumbnail");
+    command.arg("--no-embed-thumbnail");
     command.arg(if extra_meta.embed_metadata.unwrap_or(true) { "--embed-metadata" } else { "--no-embed-metadata" });
     command.arg(if extra_meta.embed_chapters.unwrap_or(true) { "--embed-chapters" } else { "--no-embed-chapters" });
 
@@ -1053,9 +1097,19 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
     // Spawn process with streaming stdout/stderr for real-time progress
     let mut child = match command.stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
+        .process_group(0)  // Make child its own process group leader (kill -<pid> kills group)
         .spawn()
     {
-        Ok(c) => c,
+        Ok(c) => {
+            // Register the child PID so we can kill it on cancel/delete
+            if let Some(pid) = c.id() {
+                use tauri::Manager;
+                if let Some(engine) = ctx.app.try_state::<crate::engine::DownloadEngine>() {
+                    engine.active_children.lock().unwrap().insert(ctx.id.clone(), pid);
+                }
+            }
+            c
+        },
         Err(e) => {
             let err = format!("Failed to spawn yt-dlp: {}", e);
             let _ = sqlx::query("UPDATE downloads SET status = 'Error', error_msg = ? WHERE id = ?")
@@ -1122,6 +1176,11 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
         let mut final_path: Option<String> = None;
 
         while let Ok(Some(line)) = lines.next_line().await {
+            // Check if cancelled — exit loop cleanly
+            if cancel_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                println!("[yt-dlp stdout] Cancelled, stopping stdout read");
+                break;
+            }
             println!("[yt-dlp stdout] {}", line);
 
             // Parse progress
@@ -1237,42 +1296,18 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "Downloaded Stream".to_string());
 
-        // Find the thumbnail file saved by yt-dlp (--write-thumbnail --convert-thumbnails jpg)
-        let thumbnail_path = {
-            let parent = std::path::Path::new(&real_path).parent()
-                .unwrap_or(std::path::Path::new("."));
-            let base_name = std::path::Path::new(&real_path)
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_default();
-            let mut found = None;
-            for ext in &["jpg", "jpeg", "png", "webp"] {
-                let candidate = parent.join(format!("{}.{}", base_name, ext));
-                if candidate.exists() {
-                    // Read and encode as base64 data URL
-                    if let Ok(bytes) = std::fs::read(&candidate) {
-                        use base64::Engine;
-                        let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                        found = Some(format!("data:image/jpeg;base64,{}", b64));
-                    }
-                    let _ = tokio::fs::remove_file(&candidate).await;
-                    break;
-                }
-            }
-            found
-        };
+        // Thumbnail is handled by background metadata probe — no sidecar files needed
 
         let mut size = 0i64;
         if let Ok(metadata) = std::fs::metadata(&real_path) {
             size = metadata.len() as i64;
         }
 
-        let _ = sqlx::query("UPDATE downloads SET status = 'Completed', completed_at = CURRENT_TIMESTAMP, save_path = ?, file_name = ?, downloaded = ?, total_size = ?, thumbnail = COALESCE(?, thumbnail) WHERE id = ?")
+        let _ = sqlx::query("UPDATE downloads SET status = 'Completed', completed_at = CURRENT_TIMESTAMP, save_path = ?, file_name = ?, downloaded = ?, total_size = ? WHERE id = ?")
             .bind(&real_path)
             .bind(&real_filename)
             .bind(size)
             .bind(size)
-            .bind(&thumbnail_path)
             .bind(&ctx.id)
             .execute(&ctx.db)
             .await;
@@ -1286,6 +1321,11 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
             id: ctx.id.clone(),
             status: "Completed".to_string(),
         });
+
+        // Clean up process registration
+        if let Some(engine) = ctx.app.try_state::<crate::engine::DownloadEngine>() {
+            engine.active_children.lock().unwrap().remove(&ctx.id);
+        }
 
         // Fire plugin complete hook
         if let Some(engine) = ctx.app.try_state::<crate::engine::DownloadEngine>() {

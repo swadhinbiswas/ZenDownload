@@ -4,7 +4,7 @@ const statusEl = document.getElementById('status');
 const statusText = document.getElementById('status-text');
 const filesCount = document.getElementById('files-count');
 const sentCount = document.getElementById('sent-count');
-let statsInterval = null;
+const interceptToggle = document.getElementById('intercept-toggle');
 
 async function checkServer() {
   try {
@@ -31,6 +31,19 @@ async function loadStats() {
     sentCount.textContent = result.sentCount || 0;
   } catch {}
 }
+
+async function loadSettings() {
+  try {
+    const result = await chrome.storage.local.get(['interceptDownloads']);
+    interceptToggle.checked = result.interceptDownloads === true;
+  } catch {
+    interceptToggle.checked = false;
+  }
+}
+
+interceptToggle.addEventListener('change', () => {
+  chrome.storage.local.set({ interceptDownloads: interceptToggle.checked });
+});
 
 async function sendCapture() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -63,3 +76,4 @@ document.getElementById('open-app').onclick = openApp;
 
 checkServer();
 loadStats();
+loadSettings();

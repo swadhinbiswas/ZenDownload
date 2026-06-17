@@ -1,4 +1,4 @@
-import { Folder, Film, Music, FileText, Package, Zap, CheckCircle, AlertCircle, Clock, Rss, Archive, Globe, MonitorPlay, Headphones, ListVideo, ChevronsUp, Upload, Tv, Layers, Sliders, Puzzle, Bell, Radio, Download, Gauge } from 'lucide-react';
+import { Folder, Film, Music, FileText, Package, Zap, CheckCircle, AlertCircle, Clock, Rss, Archive, Globe, MonitorPlay, Headphones, ListVideo, ChevronsUp, Upload, Tv, Layers, Sliders, Puzzle, Bell, Radio, Download, Gauge, Search } from 'lucide-react';
 import { useDownloadStore } from '../../stores/downloadStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { usePluginStore } from '../../stores/pluginStore';
@@ -437,6 +437,22 @@ export function Sidebar({ onOpenQueue, onBatchImport }: SidebarProps = {}) {
             <div className="flex items-center gap-2.5">
               <Gauge className={`w-4 h-4 ${currentView === 'speedtest' ? 'text-emerald-400' : 'text-zinc-600'}`} />
               <span>Speed Test</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setCurrentView('torrent_search')}
+            className={`w-full flex items-center justify-between px-3 py-2 text-[13px] font-medium rounded-lg transition-all duration-150 relative ${
+              currentView === 'torrent_search'
+                ? 'bg-white/[0.07] text-white'
+                : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300'
+            }`}
+          >
+            {currentView === 'torrent_search' && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-indigo-400" />
+            )}
+            <div className="flex items-center gap-2.5">
+              <Search className={`w-4 h-4 ${currentView === 'torrent_search' ? 'text-indigo-400' : 'text-zinc-600'}`} />
+              <span>Torrent Search</span>
             </div>
           </button>
           <button

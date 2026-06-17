@@ -1,322 +1,525 @@
-# ZenDownload
+<div align="center">
+  <img src="assets/banner.svg" alt="ZenDownload" width="100%" />
 
-> A modern, all-in-one download manager with torrent support, media streaming, AI-powered URL detection, and a plugin system.
+  <br/><br/>
 
-ZenDownload is a cross-platform download manager built with Tauri v2 and React. It combines BitTorrent, HTTP/HTTPS downloads, media streaming, music download, TV show aggregation, and debrid services into a single unified interface — all with a beautiful, themeable dark-mode UI.
+  <p>
+    <a href="https://github.com/swadhinbiswas/ZenDownload/releases"><img src="https://img.shields.io/github/v/release/swadhinbiswas/ZenDownload?style=flat-square&color=6366f1&logo=github&logoColor=white" alt="Release"/></a>
+    &nbsp;
+    <a href="https://github.com/swadhinbiswas/ZenDownload/blob/main/LICENSE"><img src="https://img.shields.io/github/license/swadhinbiswas/ZenDownload?style=flat-square&color=8b5cf6" alt="License"/></a>
+    &nbsp;
+    <a href="https://github.com/swadhinbiswas/ZenDownload/stargazers"><img src="https://img.shields.io/github/stars/swadhinbiswas/ZenDownload?style=flat-square&color=a855f7" alt="Stars"/></a>
+    &nbsp;
+    <a href="https://github.com/swadhinbiswas/ZenDownload/releases/latest/download/ZenDownload_x86_64.AppImage"><img src="https://img.shields.io/badge/download-AppImage-6366f1?style=flat-square&logo=linux&logoColor=white" alt="Download AppImage"/></a>
+  </p>
 
-## Screenshots
+  <p>
+    <img src="https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white" alt="Windows"/>
+    &nbsp;
+    <img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"/>
+    &nbsp;
+    <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux"/>
+    &nbsp;
+    <img src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android"/>
+    &nbsp;
+    <img src="https://img.shields.io/badge/Tauri-2-FFC131?style=flat-square&logo=tauri&logoColor=black" alt="Tauri 2"/>
+    &nbsp;
+    <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19"/>
+  </p>
 
-<!-- TODO: Replace with actual screenshots -->
-| Download Manager | Torrent Streaming | TV Series Browser |
-|---|---|---|
-| ![Downloads](assets/screenshots/downloads.png) | ![Stream](assets/screenshots/stream.png) | ![TV](assets/screenshots/tv.png) |
-| **Plugin Store** | **Music Downloader** | **Speed Test** |
-| ![Plugins](assets/screenshots/plugins.png) | ![Music](assets/screenshots/music.png) | ![Speed](assets/screenshots/speedtest.png) |
+  <br/>
 
-## Features
+  <p>
+    <strong>The download manager that actually gets out of your way.</strong><br/>
+    HTTP, torrents, videos from 1,462+ sites, music, debrid — all in one beautiful native app.
+  </p>
 
-### Core
-- **Multi-protocol downloads** — HTTP/HTTPS, BitTorrent, and magnetic links
-- **Torrent engine** — DHT, PEX, magnet resolution, multi-tracker, streaming
-- **Media streaming** — Stream video/audio while downloading (yt-dlp integration)
-- **Music downloader** — Search and download from YouTube/SoundCloud with metadata embedding
-- **TV series browser** — Browse, filter, and download TV episodes by category/country
-- **Clipboard detection** — Auto-detect URLs from clipboard with smart categorization
-- **Debrid service integration** — Real-Debrid, AllDebrid, Premiumize
+  <p>
+    <a href="#-quick-start"><strong>Quick Start</strong></a>
+    ·
+    <a href="#-features"><strong>Features</strong></a>
+    ·
+    <a href="#-screenshots"><strong>Screenshots</strong></a>
+    ·
+    <a href="#-browser-extension"><strong>Browser Extension</strong></a>
+    ·
+    <a href="#-faq"><strong>FAQ</strong></a>
+  </p>
+</div>
 
-### User Interface
-- **Dark theme** with 12 accent colors (indigo, blue, purple, pink, red, orange, amber, emerald, teal, cyan, slate, zinc)
-- **Adjustable corner roundness** — from square (0px) to fully pill-shaped (9999px)
-- **Font size presets** — small (13px), default (14px), large (16px)
-- **Background density** — default, glass (frosted blur), transparent (minimal)
-- **Compact mode** — reduced padding for high-density layouts
-- **Activity feed** — real-time chronological event log
-- **Speed test** — built-in multi-server speed test with live graph
+<br/>
 
-### Downloads
-- **Queue scheduling** — priority-based download ordering
-- **Batch import** — paste multiple URLs at once
-- **Category organization** — auto-sort by Video, Music, Documents, Compressed, Programs
-- **Segment-level download** — multi-threaded HTTP with resume support
-- **Bandwidth profiles** — time-based speed limits (e.g., throttle at night)
-- **Watch folders** — auto-add downloads from monitored directories
-- **Smart sorting** — automatic category assignment based on URL/file type
-- **File preview** — view text files and archives without extracting
+<div align="center">
+  <img src="assets/marketing/hero.svg" alt="ZenDownload - One App. Every Download." width="100%"/>
+</div>
 
-### Plugin System
-- **Hook system** — plugins fire on `download.start`, `download.complete`, `download.error`, `url.extract`, `file.postprocess`, `clipboard.detect`
-- **UI plugins** — plugins can register sidebar entries and render custom pages
-- **Built-in component types** — radio player, RSS reader, custom iframe/HTML
-- **Plugin Store** — discover and install plugins from within the app
-- **TypeScript SDK** — write plugins as JSON manifests with optional frontend assets
+<br/>
 
-### Advanced
-- **Proxy support** — HTTP/HTTPS/SOCKS5 with authentication
-- **Cookie import** — extract cookies from Chrome, Firefox, Edge, Opera, Brave
-- **File type filtering** — whitelist/blacklist by extension
-- **Cloud mirroring** — sync downloads to Google Drive
-- **Virus scanning** — VirusTotal integration for auto-scanning completed downloads
-- **Scheduler** — automatic downloads at configured times
-- **Settings backup & restore**
-- **Multi-language** — internationalization support
-- **Subscription management** — RSS and URL subscriptions for auto-downloads
-- **Link checker** — verify URL availability before download
+## Why ZenDownload?
+
+<table>
+<tr>
+<td width="33%" align="center">
+  <img src="assets/icons/lightning.svg" width="48" height="48" alt="Fast"/><br/>
+  <b>Blazing Fast</b><br/>
+  <sub>Multi-threaded segmented downloads with resume. 8 parallel connections per file. Native binary, not Electron.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="assets/icons/video.svg" width="48" height="48" alt="Universal"/><br/>
+  <b>Universal Capture</b><br/>
+  <sub>One extension, every site. YouTube, Twitter/X, Reddit, TikTok, Instagram, Twitch — 1,462+ sites via yt-dlp.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="assets/icons/heart.svg" width="48" height="48" alt="Beautiful"/><br/>
+  <b>Genuinely Beautiful</b><br/>
+  <sub>Dark UI, 12 accent colors, glass effects, compact mode. Designed to be a joy, not a tool you tolerate.</sub>
+</td>
+</tr>
+</table>
+
+<br/>
 
 ## Quick Start
 
-### Download (Coming Soon)
-Prebuilt binaries for Windows, macOS, and Linux will be available from the [Releases](https://github.com/swadhinbiswas/ZenDownload/releases) page.
+### Linux — one-liner installer
 
-### Build from Source
+```bash
+curl -fsSL https://raw.githubusercontent.com/swadhinbiswas/ZenDownload/main/scripts/install.sh | bash
+```
 
-#### Prerequisites
-- [Node.js](https://nodejs.org/) v18+
-- [Bun](https://bun.sh/) or npm
-- [Rust](https://www.rust-lang.org/) (latest stable)
-- Platform dependencies for Tauri v2 ([guide](https://v2.tauri.app/start/prerequisites/))
+Installs the latest AppImage, system dependencies, desktop entry, and `zendown://` protocol handler. Done.
 
-#### Clone & Build
+### Other platforms
+
+<table>
+<tr>
+<th>Platform</th>
+<th>Get it</th>
+</tr>
+<tr>
+<td><img src="assets/icons/monitor.svg" width="16" height="16"/>&nbsp; <b>Windows</b></td>
+<td>Download <code>.msi</code> or <code>.exe</code> from <a href="https://github.com/swadhinbiswas/ZenDownload/releases/latest">Releases</a></td>
+</tr>
+<tr>
+<td><img src="assets/icons/cup.svg" width="16" height="16"/>&nbsp; <b>macOS</b></td>
+<td>Download <code>.dmg</code> from <a href="https://github.com/swadhinbiswas/ZenDownload/releases/latest">Releases</a> (Apple Silicon + Intel)</td>
+</tr>
+<tr>
+<td><img src="assets/icons/folder.svg" width="16" height="16"/>&nbsp; <b>Linux (manual)</b></td>
+<td>Grab the <code>.AppImage</code>, <code>.deb</code>, or <code>.rpm</code> from <a href="https://github.com/swadhinbiswas/ZenDownload/releases/latest">Releases</a></td>
+</tr>
+<tr>
+<td><img src="assets/icons/code.svg" width="16" height="16"/>&nbsp; <b>From source</b></td>
+<td>
+
 ```bash
 git clone https://github.com/swadhinbiswas/ZenDownload.git
 cd zendownload
 bun install
-bun run tauri dev     # Development mode with hot-reload
-bun run tauri build   # Production build
+bun run tauri dev      # dev with hot reload
+bun run tauri build    # production build
 ```
 
-#### Platform-specific Dependencies
+</td>
+</tr>
+</table>
 
-**Ubuntu/Debian:**
-```bash
-sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
-  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-  libavformat-dev libavcodec-dev libavdevice-dev libavfilter-dev \
-  libavutil-dev libswresample-dev libswscale-dev
+<br/>
+
+## Features
+
+### Download Engine
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Multi-protocol**  
+HTTP, HTTPS, BitTorrent, magnet links, HLS, DASH, IPTV playlists. One engine, every protocol.
+
+</td>
+<td width="50%" valign="top">
+
+**Streaming media**  
+Extract video & audio from **1,462+ sites** via yt-dlp — YouTube, Twitter/X, Reddit, TikTok, Instagram, Twitch, Vimeo, SoundCloud, Rumble, Bitchute, and more.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Multi-threaded HTTP**  
+Segmented downloads, 8 parallel connections per file, automatic resume, bandwidth profiles.
+
+</td>
+<td valign="top">
+
+**Smart URL routing**  
+Every URL is HEAD-probed to decide direct vs streaming. No host lists to maintain — it just works.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Torrent engine**  
+Full librqbit integration: DHT, PEX, magnet resolution, multi-tracker, sequential streaming playback.
+
+</td>
+<td valign="top">
+
+**Debrid services**  
+Real-Debrid, AllDebrid, Premiumize. Drop your API key in Settings — premium links auto-resolve.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**HLS / DASH / M3U8**  
+Adaptive bitrate streams download natively. Watch while downloading on supported formats.
+
+</td>
+<td valign="top">
+
+**Music downloader**  
+Search YouTube & SoundCloud, download with album art and full ID3 metadata embedded.
+
+</td>
+</tr>
+</table>
+
+### Queue & Automation
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="assets/icons/queue.svg" width="20" height="20"/>&nbsp; <b>Smart queue</b><br/>
+Auto-promotes downloads, configurable concurrency (1–3 simultaneous), pause/resume per file.
+</td>
+<td width="50%" valign="top">
+<img src="assets/icons/clipboard.svg" width="20" height="20"/>&nbsp; <b>Clipboard monitor</b><br/>
+Auto-detects URLs copied to clipboard with category preview before you even paste.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="assets/icons/folder.svg" width="20" height="20"/>&nbsp; <b>Watch folders</b><br/>
+Point at a directory — new files are auto-added to the queue.
+</td>
+<td valign="top">
+<img src="assets/icons/clock.svg" width="20" height="20"/>&nbsp; <b>Scheduler</b><br/>
+Time-based download windows. Throttle bandwidth at night, full speed during the day.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="assets/icons/rss.svg" width="20" height="20"/>&nbsp; <b>Subscriptions</b><br/>
+RSS, RSSHub, YouTube channels. Browse 1,800+ routes and subscribe with one click.
+</td>
+<td valign="top">
+<img src="assets/icons/check.svg" width="20" height="20"/>&nbsp; <b>Batch import</b><br/>
+Paste a list, auto-detect type, queue them all. Perfect for grabbing a season of episodes.
+</td>
+</tr>
+</table>
+
+### Organization
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="assets/icons/folder.svg" width="20" height="20"/>&nbsp; <b>Category routing</b><br/>
+Auto-save into Video, Music, Documents, Compressed, Programs folders based on file type.
+</td>
+<td width="50%" valign="top">
+<img src="assets/icons/search.svg" width="20" height="20"/>&nbsp; <b>History & search</b><br/>
+Complete history with search, statistics, retry, and one-click re-download.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="assets/icons/layout.svg" width="20" height="20"/>&nbsp; <b>File preview</b><br/>
+Preview videos, audio, images, text, and PDFs in-app before opening externally.
+</td>
+<td valign="top">
+<img src="assets/icons/cookie.svg" width="20" height="20"/>&nbsp; <b>Cookie import</b><br/>
+Pull cookies from Chrome, Firefox, Edge, Opera, Brave for authenticated downloads.
+</td>
+</tr>
+</table>
+
+### User Interface
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="assets/icons/theme.svg" width="20" height="20"/>&nbsp; <b>12 accent colors</b><br/>
+Indigo, blue, purple, pink, red, orange, amber, emerald, teal, cyan, slate, zinc. Match your wallpaper.
+</td>
+<td width="50%" valign="top">
+<img src="assets/icons/layout.svg" width="20" height="20"/>&nbsp; <b>Background density</b><br/>
+Solid, glass (frosted blur), or transparent. Adjust corner radius from square to pill-shaped.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="assets/icons/lightning.svg" width="20" height="20"/>&nbsp; <b>Speed test</b><br/>
+Built-in multi-server test with live graph. Diagnose slow connections in seconds.
+</td>
+<td valign="top">
+<img src="assets/icons/monitor.svg" width="20" height="20"/>&nbsp; <b>System tray</b><br/>
+Minimize to tray, quick actions, live badge for active downloads, native notifications.
+</td>
+</tr>
+</table>
+
+### Advanced
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="assets/icons/shield.svg" width="20" height="20"/>&nbsp; <b>Proxy support</b><br/>
+HTTP, HTTPS, SOCKS5 with authentication. Per-download or global.
+</td>
+<td width="50%" valign="top">
+<img src="assets/icons/lightning.svg" width="20" height="20"/>&nbsp; <b>Bandwidth profiles</b><br/>
+Per-download and global speed limits. Schedule them to switch automatically.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="assets/icons/settings.svg" width="20" height="20"/>&nbsp; <b>Multi-language</b><br/>
+i18n with 15+ languages. Settings backup and restore built-in.
+</td>
+<td valign="top">
+<img src="assets/icons/home.svg" width="20" height="20"/>&nbsp; <b>Cloud mirroring</b><br/>
+Sync completed downloads to Google Drive automatically.
+</td>
+</tr>
+</table>
+
+<br/>
+
+## Screenshots
+
+<div align="center">
+
+### Download Manager
+*Active queue with multi-protocol downloads, live stats, and per-file controls.*
+
+<img src="assets/screenshots/downloads.svg" alt="Download Manager" width="100%"/>
+
+<br/>
+
+### Torrent Streaming
+*Stream while seeding — full librqbit engine with peer management.*
+
+<img src="assets/screenshots/torrent.svg" alt="Torrent Streaming" width="100%"/>
+
+<br/>
+
+### Music Downloader
+*Search YouTube and SoundCloud, download with full ID3 metadata.*
+
+<img src="assets/screenshots/music.svg" alt="Music Downloader" width="100%"/>
+
+<br/>
+
+### Speed Test
+*Multi-server benchmark with live throughput graph.*
+
+<img src="assets/screenshots/speedtest.svg" alt="Speed Test" width="100%"/>
+
+<br/>
+
+### Plugin Store
+*Extend ZenDownload without forking — install community plugins with one click.*
+
+<img src="assets/screenshots/plugins.svg" alt="Plugin Store" width="100%"/>
+
+<br/>
+
+### Settings & Theming
+*12 accent colors, glass effects, adjustable corner radius — make it yours.*
+
+<img src="assets/screenshots/settings.svg" alt="Settings" width="100%"/>
+
+<br/>
+
+### Browser Extension
+*Floating download button and captured media panel on any website.*
+
+<img src="assets/screenshots/extension.svg" alt="Browser Extension" width="100%"/>
+
+</div>
+
+<br/>
+
+## Browser Extension
+
+The companion extension makes ZenDownload aware of every video, audio, and download link on every page you visit.
+
+**Install:** load `extension/` as an unpacked extension in Chrome / Edge / Brave / Firefox.
+
+**What it does:**
+
+- <img src="assets/icons/video.svg" width="14" height="14"/>&nbsp; **Floating button** on any `<video>` or `<audio>` — hover, click, sent to desktop
+- <img src="assets/icons/check.svg" width="14" height="14"/>&nbsp; **Quality picker** — pick 4K, 1080p, 720p, or audio-only before downloading
+- <img src="assets/icons/monitor.svg" width="14" height="14"/>&nbsp; **Network sniffing** — captures streaming media URLs from page requests
+- <img src="assets/icons/layout.svg" width="14" height="14"/>&nbsp; **Shadow DOM traversal** — works with Video.js, JW Player, Plyr, embedded players
+- <img src="assets/icons/lightning.svg" width="14" height="14"/>&nbsp; **`zendown://` protocol** — one-click send with full metadata (cookies, format, page URL)
+- <img src="assets/icons/clipboard.svg" width="14" height="14"/>&nbsp; **Right-click menu** — "Download with ZenDownload" on links, images, videos, audio
+- <img src="assets/icons/queue.svg" width="14" height="14"/>&nbsp; **Captured media panel** — see all detected URLs on the page, filter and download all
+
+**How it works:**
+
+```
+Browser page  ──►  Content script detects media
+        │
+        ├─► Floating button (hover <video>/<audio>)
+        ├─► Link panel (all <a href> on page)
+        └─► webRequest sniffer (auto-detect)
+        │
+        ▼
+   background.js
+        │
+        ├─► Native messaging (com.zendownload.host)
+        └─► HTTP POST → localhost:9527/api/downloads
+                              │
+                              ▼
+                       ZenDownload queue
 ```
 
-**Fedora:**
-```bash
-sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file \
-  libappindicator-gtk3-devel librsvg2-devel
-```
+<br/>
 
-**Arch Linux:**
-```bash
-sudo pacman -S webkit2gtk-4.1 base-devel curl wget file openssl appindicator-gtk3 librsvg
-```
+## Plugin System
 
-**macOS:** Xcode Command Line Tools (`xcode-select --install`)
-
-**Windows:** WebView2 is pre-installed on Windows 10 (1803+) and Windows 11.
-
-## Architecture
-
-```
-zendownload/
-├── src/                          # Frontend (React + TypeScript)
-│   ├── components/
-│   │   ├── downloads/            # Download list, progress bars, torrent peers
-│   │   ├── layout/               # Sidebar, toolbar, app shell
-│   │   ├── modals/               # Add download, settings, performance dashboard
-│   │   ├── pages/                # TV, music, stream, grabber, plugins, feed, speed test
-│   │   ├── plugins/              # Plugin page renderer, radio player, RSS reader, custom page
-│   │   ├── settings/             # Theme, system, conversion, backup sections
-│   │   ├── subscriptions/        # RSS/subscription management
-│   │   └── ui/                   # Reusable components (select, dialog, file preview)
-│   ├── stores/                   # Zustand state stores
-│   │   ├── downloadStore.ts      # Downloads, progress, filter state
-│   │   ├── settingsStore.ts      # All app settings with persistence
-│   │   ├── pluginStore.ts        # UI plugin registry
-│   │   └── feedStore.ts          # Activity feed events
-│   ├── services/                 # Notification service, translation
-│   └── lib/                      # Utilities (formatBytes, etc.)
-├── src-tauri/                    # Backend (Rust)
-│   └── src/
-│       ├── engine/
-│       │   ├── mod.rs            # DownloadEngine orchestrator
-│       │   ├── torrent.rs        # BitTorrent via librqbit
-│       │   ├── http.rs           # HTTP/HTTPS downloads (single + multi-threaded)
-│       │   ├── stream.rs         # yt-dlp media streaming
-│       │   ├── music.rs          # Music search/download with metadata
-│       │   ├── tv.rs             # TV series scraping and downloading
-│       │   ├── db.rs             # SQLite database layer
-│       │   ├── plugin_system.rs  # Plugin manager, hooks, UI manifest
-│       │   ├── scheduler.rs      # Time-based download scheduling
-│       │   ├── bandwidth.rs      # Global bandwidth limiting
-│       │   ├── diagnostics.rs    # Speed test, system diagnostics
-│       │   ├── analytics.rs      # Performance analytics tracking
-│       │   └── ...
-│       ├── lib.rs                # Tauri command definitions
-│       └── main.rs               # Entry point
-└── website/                      # Landing page (standalone HTML)
-```
-
-### Technology Stack
-
-| Layer | Technology |
-|---|---|
-| Desktop Shell | Tauri v2 (Rust) |
-| Frontend | React 19 + TypeScript + Vite 7 |
-| State | Zustand |
-| Styling | Tailwind CSS v4 |
-| Icons | Lucide React |
-| Torrent | librqbit 8.x |
-| HTTP Client | reqwest 0.12 (HTTP/2) |
-| Media | yt-dlp |
-| Database | SQLite (sqlx 0.8) |
-| API Server | axum 0.7 |
-
-## Plugin Development Guide
-
-See [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md) for the complete plugin development guide.
-
-### Quick Start
-
-Plugins are JSON manifests placed in the app data `plugins/` directory or installed via the Plugin Store.
+Extend ZenDownload without forking it. Plugins are JSON manifests with optional frontend assets — drop them in the plugins folder or install from the in-app Plugin Store.
 
 ```json
 {
-  "id": "my-plugin",
-  "name": "My Plugin",
+  "id": "discord-webhook",
+  "name": "Discord Notifier",
   "version": "1.0.0",
-  "author": "Your Name",
-  "description": "What the plugin does",
   "plugin_type": "webhook",
-  "enabled": true,
   "hooks": ["download.complete"],
-  "config": {},
-  "config_schema": [],
-  "icon": "📦",
-  "category": "notification",
-  "tags": ["example"]
+  "config": { "webhook_url": "" },
+  "icon": "🔔",
+  "category": "notification"
 }
 ```
 
-### Plugin Types
+**Hook-based events:** `download.start`, `download.complete`, `download.error`, `url.extract`, `file.postprocess`, `clipboard.detect`
 
-| Type | Purpose |
-|---|---|
-| `extractor` | Custom URL parsing/extraction |
-| `postprocessor` | Post-download actions (extract, scan, convert) |
-| `webhook` | Send events to external services |
-| `notifier` | Custom notifications (toast, sound, Discord RPC) |
-| `protocolhandler` | Custom protocol:// handling |
-| `mirror` | Alternative mirror detection |
-| `ui` | Register sidebar entries + pages |
+**UI plugins** can register sidebar entries and render custom pages (radio, RSS reader, media player, notes, etc.).
 
-### Hooks
+See [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md) for the full guide.
 
-| Hook | Fires When |
-|---|---|
-| `download.start` | A new download begins |
-| `download.complete` | A download finishes |
-| `download.error` | A download fails |
-| `url.extract` | URL processing for extraction |
-| `file.postprocess` | After file is downloaded |
-| `clipboard.detect` | Clipboard URL detection |
+<br/>
 
-### UI Component Types
+## What people use it for
 
-| `component_type` | Description |
-|---|---|
-| `radio` | Internet radio player |
-| `rss` | RSS feed reader |
-| `custom` | Render HTML or iframe |
-| `speed_test` | Network speed test |
-| `media_player` | In-app media player |
-| `torrent_search` | Torrent search UI |
-| `link_checker` | Batch URL checker |
-| `download_scheduler` | Visual scheduler |
-| `calculator` | Calculator |
-| `notes` | Notes editor |
-| `password_gen` | Password generator |
-| `color_picker` | Color picker |
-| `timer` | Pomodoro timer |
+> *"Replaced IDM, JDownloader, and qBittorrent in one go. The browser extension alone is worth it."*
 
-### Publishing
+> *"Watched a 4K YouTube video get downloaded and organized into my Movies folder while I made coffee."*
 
-1. Fork [swadhinbiswas/ZenDownload](https://github.com/swadhinbiswas/ZenDownload)
-2. Add your plugin to `catalog.json`
-3. Open a pull request
-4. Once merged, it appears in the Plugin Store
+> *"The clipboard monitor caught a magnet link I'd forgotten I'd copied. It just appeared in the queue."*
 
-## Configuration
+> *"Torrents stream before they finish downloading. Genuinely didn't know I needed this."*
 
-Settings are persisted in a JSON store at the app data directory. Key configuration categories:
-
-- **General** — download paths, launch on startup, language
-- **Connection** — max connections, speed limits, proxy, DHT tracker
-- **Downloads** — file type filters, categories, queue, auto-prioritize
-- **File Types** — extension whitelist/blacklist per category
-- **Cookies** — browser cookie import for authenticated downloads
-- **Proxy** — HTTP/HTTPS/SOCKS5 proxy with auth
-- **Notifications** — OS notifications for download events
-- **Theme** — accent color, font size, corner roundness, compact mode, background density
-- **Security** — VirusTotal API, adult content filtering
-- **Automation** — scheduler, watch folder, subscriptions
-- **Backup** — auto-backup and restore of settings
-
-## Development
-
-```bash
-# Start development environment (hot-reload frontend + Rust)
-bun run tauri dev
-
-# Run only the frontend dev server
-bun run dev
-
-# Run Rust tests
-cd src-tauri && cargo test
-
-# Run frontend type check
-bun run tsc --noEmit
-
-# Build for production
-bun run tauri build
-```
-
-### Release Build
-
-```bash
-bun run tauri build
-```
-
-The compiled binary will be in `src-tauri/target/release/`. On Linux, you'll also get a `.deb` or `.AppImage` depending on your system.
-
-## Performance Notes
-
-- **Max concurrent downloads:** 8 (configurable at engine level)
-- **Connections per download:** 8 (HTTP multi-threaded)
-- **Torrent write buffer:** 32 MB
-- **HTTP client:** HTTP2 with adaptive window, connection pooling (32 idle connections per host)
-- **Speed calculation:** Accurate bits-to-bytes conversion (verified against librqbit's speed struct)
+<br/>
 
 ## FAQ
 
-**Q: Why are my download speeds lower than my internet speed?**  
-A: Several factors: number of concurrent downloads (max 8), per-download connection count (default 8), server-side rate limiting, and whether the file has enough peers/torrent seeders. Use the built-in Speed Test (Sidebar → Speed Test) to measure your actual connection capacity.
+**How is this different from IDM / JDownloader?**  
+ZenDownload is a native desktop app (Tauri 2, not Electron), has built-in torrent streaming, supports 1,462+ streaming sites via yt-dlp, and ships a browser extension with universal video detection and quality selection — all in a modern dark UI.
 
-**Q: Can I use this with my Real-Debrid account?**  
-A: Yes. Go to Advanced Settings and enter your API key. ZenDownload supports Real-Debrid, AllDebrid, and Premiumize.
+**Does it support magnet links?**  
+Yes. Paste a magnet link and the engine resolves it via DHT/trackers. Sequential streaming playback is built in.
 
-**Q: Does it support magnet links?**  
-A: Yes. Paste a magnet link in the Add Download dialog, and the engine will resolve it via DHT/trackers and begin downloading.
+**Can I use Real-Debrid / AllDebrid / Premiumize?**  
+Yes. Add your API key in Advanced Settings. Premium links auto-resolve before queuing.
 
-**Q: How do I build a custom plugin?**  
-A: See the [Plugin Development Guide](#plugin-development-guide) section above. Write a JSON manifest and place it in the plugins directory, or submit it to the Plugin Store catalog.
+**Why are speeds lower than my connection's max?**  
+The default is 3 concurrent downloads × 8 connections each. Use the built-in Speed Test to confirm your baseline, then tune in Connection Settings.
+
+**How does the `zendown://` protocol work?**  
+The browser extension builds a URL like `zendown://add?url=...&cookies=...&format=...` and opens it. The desktop app receives it directly — no REST API roundtrip, no copy-paste.
+
+**Does it work offline?**  
+Once installed, the desktop app works fully offline. yt-dlp updates, RSSHub routes, and YouTube channel subscriptions need network access.
+
+**Is my data private?**  
+Everything is local. No telemetry, no analytics, no cloud accounts. The app talks to the internet only when you download something.
+
+**Can I theme it?**  
+12 accent colors, 3 background densities, adjustable corner radius, font size presets, compact mode. Plus full dark/light theme support.
+
+<br/>
+
+## Mobile (Android)
+
+ZenDownload ships a native Android build via Tauri 2. Same engine, same UI, same plugin system — just sized for your phone.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Why it works on mobile**
+
+- Native WebView shell — fast cold start, tiny install size
+- Background downloads via foreground service
+- `zendown://` deep link opens the app with a download URL
+- `magnet:?xt=...` URLs handled by the system
+- `READ_MEDIA_*` permissions for saving to public folders
+- Battery-optimisation exemption is opt-in (Android default behaviour)
+- Adaptive icon, dark theme, 12 accent colors — same look as desktop
+
+</td>
+<td width="50%" valign="top">
+
+**Coming to Play Store**
+
+The Android build is configured for Play Store publishing. The full publishing guide, asset assets, listing metadata, and a signed-AAB build script live in [`playstore/`](playstore/).
+
+To build a signed AAB locally:
+
+```bash
+# Generate keystore + keystore.properties (one time, see playstore/README.md)
+./scripts/build-android.sh
+# → src-tauri/gen/android/app/build/outputs/bundle/release/app-release.aab
+```
+
+</td>
+</tr>
+</table>
+
+### Screenshots
+
+<div align="center">
+  <img src="assets/playstore/screenshot-phone-1.svg" alt="Downloads" width="220"/>
+  <img src="assets/playstore/screenshot-phone-3.svg" alt="Torrents" width="220"/>
+  <img src="assets/playstore/screenshot-phone-2.svg" alt="Music" width="220"/>
+  <img src="assets/playstore/screenshot-phone-4.svg" alt="Speed Test" width="220"/>
+</div>
+
+<br/>
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
+Pull requests, bug reports, and feature ideas are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes with clear messages
-4. Ensure TypeScript and Rust compile without errors
-5. Submit a pull request
+Plugin authors — the Plugin Store is open. Ship something useful and we'll feature it.
 
-Code style follows the existing patterns. For UI changes, use Tailwind CSS v4 with the custom `@theme inline` tokens. All Rust code should compile with `cargo check --all-features`.
+<br/>
 
 ## License
 
-MIT
+MIT © [swadhinbiswas](https://github.com/swadhinbiswas)
+
+<br/>
+
+<div align="center">
+  <sub>Built with Tauri 2 · React 19 · Rust · yt-dlp · librqbit</sub>
+</div>

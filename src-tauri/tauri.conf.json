@@ -42,7 +42,7 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -62,7 +62,6 @@
     "resources": [],
     "externalBin": [],
     "copyright": "Copyright © 2026 ZenDownload",
-    "licenseFile": "",
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
@@ -99,7 +98,20 @@
   "plugins": {
     "updater": {
       "pubkey": "",
-      "endpoints": []
+      "endpoints": [
+        "https://github.com/swadhinbiswas/ZenDownload/releases/latest/download/latest.json"
+      ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["zendown"]
+      },
+      "mobile": [
+        {
+          "host": "add",
+          "pathPrefix": [""]
+        }
+      ]
     }
   }
 }

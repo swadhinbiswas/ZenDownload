@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1"><animate attributeName="stop-color" values="#6366f1;#8b5cf6;#a855f7;#6366f1" dur="3s" repeatCount="indefinite"/></stop>
+      <stop offset="100%" stop-color="#a855f7"><animate attributeName="stop-color" values="#a855f7;#6366f1;#8b5cf6;#a855f7" dur="3s" repeatCount="indefinite"/></stop>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Icon -->
+  <g transform="translate(10,10)" filter="url(#glow)">
+    <rect x="0" y="0" width="100" height="100" rx="22" fill="url(#g)" opacity="0.95"/>
+    <!-- Arrow -->
+    <g transform="translate(50,50)" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M0-28v18">
+        <animate attributeName="d" values="M0-28v18;M0-28v20;M0-28v18" dur="2s" repeatCount="indefinite"/>
+      </path>
+      <path d="M-12-10L0 2l12-12"/>
+      <path d="M-24 14v4a2 2 0 002 2h44a2 2 0 002-2v-4">
+        <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite"/>
+      </path>
+    </g>
+  </g>
+
+  <!-- Text -->
+  <g transform="translate(125,0)">
+    <text x="0" y="55" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="38" font-weight="800" fill="url(#g2)" letter-spacing="-1">
+      Zen<tspan font-weight="300">Download</tspan>
+    </text>
+    <text x="2" y="80" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#71717a" font-weight="500" letter-spacing="2">
+      UNIVERSAL DOWNLOAD MANAGER
+    </text>
+  </g>
+</svg>

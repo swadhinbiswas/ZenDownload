@@ -667,14 +667,14 @@ export function DownloadList() {
                 })}
             </div>
             <DownloadPropertiesModal isOpen={!!propertiesDownload} onClose={() => setPropertiesDownload(null)} download={propertiesDownload} />
-            {previewDownload && previewDownload.save_path && (
-                <FilePreview
-                    filePath={previewDownload.save_path}
-                    fileName={previewDownload.file_name}
-                    fileSize={previewDownload.total_size ?? undefined}
-                    onClose={() => setPreviewDownload(null)}
-                />
-            )}
+        {previewDownload && previewDownload.save_path && (
+            <FilePreview
+                filePath={getFullPath(previewDownload)}
+                fileName={previewDownload.file_name}
+                fileSize={previewDownload.total_size ?? undefined}
+                onClose={() => setPreviewDownload(null)}
+            />
+        )}
         </div>
     );
 }

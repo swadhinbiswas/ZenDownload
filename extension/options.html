@@ -43,7 +43,7 @@
   <div class="option">
     <div class="option-label">Intercept browser downloads</div>
     <div class="option-desc">When Chrome downloads a file, automatically forward it to ZenDownload instead</div>
-    <label><input type="checkbox" id="interceptDownloads" checked> Enable download interception</label>
+    <label><input type="checkbox" id="interceptDownloads"> Enable download interception</label>
   </div>
 
   <div class="option">
@@ -81,7 +81,7 @@
 
     function load() {
       chrome.storage.local.get(['interceptDownloads', 'showNotifications', 'sniffRequests'], (r) => {
-        document.getElementById('interceptDownloads').checked = r.interceptDownloads !== false;
+        document.getElementById('interceptDownloads').checked = r.interceptDownloads === true;
         document.getElementById('showNotifications').checked = r.showNotifications !== false;
         document.getElementById('sniffRequests').checked = r.sniffRequests !== false;
       });

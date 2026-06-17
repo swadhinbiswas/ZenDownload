@@ -13,6 +13,78 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Handle zendown:// protocol URLs from the browser extension.
+/// Format: zendown://add?url=<encoded>&page=<encoded>&cookies=<encoded>&format=<encoded>&title=<encoded>&threads=<n>
+async fn handle_zendown_link(app: &tauri::AppHandle, raw_url: &str) {
+    println!("[zendown] Received deep link: {}", raw_url);
+    let engine = match app.try_state::<crate::engine::DownloadEngine>() {
+        Some(e) => e.inner().clone(),
+        None => {
+            eprintln!("[zendown] Download engine not available");
+            return;
+        }
+    };
+
+    // Parse query parameters
+    let mut url = String::new();
+    let mut page_url = String::new();
+    let mut cookies = String::new();
+    let mut format = String::new();
+    let mut title = String::new();
+    let mut category: Option<String> = None;
+    let mut threads: usize = 8;
+    let mut user_agent = String::new();
+
+    if let Some(query) = raw_url.strip_prefix("zendown://add?") {
+        for pair in query.split('&') {
+            if let Some((key, value)) = pair.split_once('=') {
+                let decoded = urlencoding::decode(value).unwrap_or_else(|_| value.into()).into_owned();
+                match key {
+                    "url" => url = decoded,
+                    "page" => page_url = decoded,
+                    "cookies" => cookies = decoded,
+                    "format" => format = decoded,
+                    "title" => title = decoded,
+                    "category" => category = Some(decoded),
+                    "threads" => threads = value.parse().unwrap_or(8),
+                    "ua" => user_agent = decoded,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    if url.is_empty() {
+        eprintln!("[zendown] No URL in deep link");
+        return;
+    }
+
+    // Build extra_meta JSON with all context
+    let mut extra = serde_json::Map::new();
+    extra.insert("source".into(), serde_json::Value::String("browser_extension".into()));
+    if !page_url.is_empty() { extra.insert("page_url".into(), serde_json::Value::String(page_url.clone())); }
+    if !title.is_empty() { extra.insert("page_title".into(), serde_json::Value::String(title)); }
+    if !cookies.is_empty() { extra.insert("cookies".into(), serde_json::Value::String(cookies)); }
+    if !format.is_empty() { extra.insert("format".into(), serde_json::Value::String(format)); }
+    if !user_agent.is_empty() { extra.insert("user_agent".into(), serde_json::Value::String(user_agent)); }
+    let extra_meta = if extra.len() > 1 {
+        Some(serde_json::Value::Object(extra).to_string())
+    } else {
+        None
+    };
+
+    let save_path = engine::resolve_category_path(&engine.db, category.as_deref()).await;
+    match engine.add_download(url, save_path, threads, category, extra_meta).await {
+        Ok(id) => {
+            println!("[zendown] Added download: {}", id);
+            let _ = app.emit("downloads-updated", ());
+        }
+        Err(e) => {
+            eprintln!("[zendown] Failed to add download: {}", e);
+        }
+    }
+}
+
 #[tauri::command]
 async fn send_notification<R: Runtime>(
     app: tauri::AppHandle<R>,
@@ -590,6 +662,54 @@ async fn add_torrent_file(
 }
 
 #[tauri::command]
+async fn torrent_list_files(id: String, engine: tauri::State<'_, DownloadEngine>) -> Result<Vec<crate::engine::torrent_extras::TorrentFileEntry>, String> {
+    engine.torrent_engine.read().await.list_files(&id).await
+}
+
+#[tauri::command]
+async fn torrent_get_health(id: String, engine: tauri::State<'_, DownloadEngine>) -> Result<String, String> {
+    engine.torrent_engine.read().await.get_torrent_health(&id).await
+}
+
+#[tauri::command]
+async fn search_torrents(query: String) -> Result<Vec<engine::torrent_search::TorrentResult>, String> {
+    Ok(engine::torrent_search::search_all(&query).await)
+}
+
+#[tauri::command]
+async fn discover_torrents() -> Result<Vec<engine::torrent_discover::TrendingTorrent>, String> {
+    Ok(engine::torrent_discover::fetch_trending().await)
+}
+
+#[tauri::command]
+async fn preview_torrent(magnet: String) -> Result<serde_json::Value, String> {
+    use librqbit::{Session, AddTorrent, AddTorrentOptions};
+    use std::path::PathBuf;
+    let dl_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
+    let session = Session::new(dl_dir).await.map_err(|e| e.to_string())?;
+    let add = AddTorrent::from_url(&magnet);
+    let response = session.add_torrent(add, Some(AddTorrentOptions::default()))
+        .await.map_err(|e| format!("Failed: {:?}", e))?;
+    let handle = match response {
+        librqbit::AddTorrentResponse::AlreadyManaged(_, h) => h,
+        librqbit::AddTorrentResponse::Added(_, h) => h,
+        _ => return Err("Torrent metadata not available".into()),
+    };
+    let name = handle.name().unwrap_or_default();
+    let info = handle.with_metadata(|m| {
+        let files: Vec<serde_json::Value> = m.file_infos.iter().map(|f| {
+            serde_json::json!({ "path": f.relative_filename.to_string_lossy().to_string(), "size": f.len })
+        }).collect();
+        let total = m.file_infos.iter().map(|f| f.len).sum::<u64>();
+        serde_json::json!({
+            "name": name, "total_size": total,
+            "file_count": m.file_infos.len(), "files": files,
+        })
+    }).unwrap_or(serde_json::json!({ "name": name, "total_size": 0, "file_count": 0, "files": [] }));
+    Ok(info)
+}
+
+#[tauri::command]
 async fn get_subscriptions(engine: tauri::State<'_, DownloadEngine>) -> Result<Vec<crate::engine::automation::Subscription>, String> {
     sqlx::query_as::<_, crate::engine::automation::Subscription>("SELECT id, name, url, sub_type, enabled, interval_minutes, include_keywords, exclude_keywords, category, last_checked, last_error FROM subscriptions ORDER BY id DESC")
         .fetch_all(&engine.db)
@@ -656,12 +776,35 @@ async fn save_runtime_settings(settings: engine::runtime_settings::RuntimeSettin
 
 #[tauri::command]
 async fn run_subscription_now(id: i64, engine: tauri::State<'_, DownloadEngine>) -> Result<(), String> {
-    crate::engine::automation::run_subscription_now(id, &engine.db).await
+    crate::engine::automation::run_subscription_now(id, &engine.db, &engine.app).await
 }
 
 #[tauri::command]
 async fn set_subscription_enabled(id: i64, enabled: bool, engine: tauri::State<'_, DownloadEngine>) -> Result<(), String> {
     crate::engine::automation::set_subscription_enabled(id, enabled, &engine.db).await
+}
+
+/// Discover available RSSHub routes from a running RSSHub instance
+#[tauri::command]
+async fn discover_rsshub_routes(rsshub_url: Option<String>) -> Result<Vec<serde_json::Value>, String> {
+    let base = rsshub_url.unwrap_or_else(|| "https://rsshub.app".to_string());
+    let url = format!("{}/api/routes?lang=en", base.trim_end_matches('/'));
+    let resp = reqwest::get(&url).await.map_err(|e| format!("Cannot reach RSSHub: {}", e))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("Bad response: {}", e))?;
+    let routes = if let Some(r) = data.get("data") {
+        r.as_object().map(|obj| {
+            obj.iter().map(|(name, info)| {
+                serde_json::json!({
+                    "name": name,
+                    "description": info.get("description").and_then(|v| v.as_str()).unwrap_or(""),
+                    "routes": info.get("routes"),
+                })
+            }).collect()
+        }).unwrap_or_default()
+    } else {
+        vec![]
+    };
+    Ok(routes)
 }
 
 #[tauri::command]
@@ -781,6 +924,9 @@ async fn set_api_server_enabled(enabled: bool, port: u16, engine: tauri::State<'
 
 #[tauri::command]
 async fn read_text_file(path: String, max_bytes: usize) -> Result<String, String> {
+    if std::path::Path::new(&path).is_dir() {
+        return Err("Cannot preview a directory. Select a file.".into());
+    }
     use std::io::Read;
     let mut file = std::fs::File::open(&path).map_err(|e| e.to_string())?;
     let mut buffer = vec![0u8; max_bytes];
@@ -791,6 +937,9 @@ async fn read_text_file(path: String, max_bytes: usize) -> Result<String, String
 
 #[tauri::command]
 async fn serve_file(path: String) -> Result<String, String> {
+    if std::path::Path::new(&path).is_dir() {
+        return Err("Cannot preview a directory. Select a file.".into());
+    }
     use std::io::Read;
     let mut file = std::fs::File::open(&path).map_err(|e| format!("Cannot open file: {}", e))?;
     let mut buffer = Vec::new();
@@ -1288,6 +1437,10 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
+            println!("A new instance was opened with: {argv:?}");
+        }))
         .setup(|app| {
             let app_handle = app.handle().clone();
 
@@ -1344,8 +1497,11 @@ pub fn run() {
                     &quit_i,
                 ])?;
 
+                let tray_icon = tauri::image::Image::from_bytes(
+                    include_bytes!("../icons/128x128.png")
+                ).ok();
                 let _tray = TrayIconBuilder::new()
-                    .icon(app.default_window_icon().unwrap().clone())
+                    .icon(tray_icon.unwrap_or_else(|| app.default_window_icon().unwrap().clone()))
                     .tooltip("ZenDownload - UDM Engine Active")
                     .menu(&menu)
                     .show_menu_on_left_click(false)
@@ -1454,14 +1610,32 @@ pub fn run() {
                                 .and_then(|p| p.parse().ok())
                                 .unwrap_or(settings.api_server_port);
                             println!("Starting REST API server on port {}", port);
+                            let api_app = app_handle.clone();
                             tauri::async_runtime::spawn(async move {
-                                if let Err(e) = engine::api_server::start_api_server(api_db, port).await {
+                                if let Err(e) = engine::api_server::start_api_server(api_db, port, api_app).await {
                                     eprintln!("API server error: {}", e);
                                 }
                             });
                         } else {
                             println!("REST API server disabled (enable in Settings → Advanced → API Server)");
                         }
+
+                        // Deep link handler for zendown:// protocol
+                        use tauri_plugin_deep_link::DeepLinkExt;
+                        app_handle.deep_link().register("zendown").ok();
+                        let dl_handle = app_handle.clone();
+                        app.deep_link().on_open_url(move |event| {
+                            for url in event.urls() {
+                                let url_str = url.to_string();
+                                if url_str.starts_with("zendown://") {
+                                    let h = dl_handle.clone();
+                                    let u = url_str.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        handle_zendown_link(&h, &u).await;
+                                    });
+                                }
+                            }
+                        });
                     }
                     Err(e) => {
                         eprintln!("Failed to initialize database: {}", e);
@@ -1492,12 +1666,18 @@ pub fn run() {
             cancel_download,
             delete_download,
             add_torrent_file,
+            torrent_list_files,
+            torrent_get_health,
+            search_torrents,
+            discover_torrents,
+            preview_torrent,
             get_subscriptions,
             add_subscription,
             delete_subscription,
             save_runtime_settings,
             run_subscription_now,
             set_subscription_enabled,
+            discover_rsshub_routes,
             check_updates,
             install_update,
             get_history,

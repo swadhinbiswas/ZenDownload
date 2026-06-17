@@ -2,6 +2,45 @@
 
 All notable changes to ZenDownload will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Android (Play Store) release** — full Tauri 2 Android scaffold under `src-tauri/gen/android/`
+  - Standardized namespace to `com.zendownload.app` (was `com.zen.download`)
+  - Signed AAB build pipeline (`scripts/build-android.sh` + GitHub Actions workflow)
+  - ABI splits for `arm64-v8a`, `armeabi-v7a`, `x86_64` + universal APK fallback
+  - Release build enables R8/ProGuard + resource shrinking
+- **Play Store metadata** under `playstore/`:
+  - `listing.json` — full Play Console store-listing metadata
+  - `privacy-policy.md` — privacy policy (no data collection)
+  - `release-notes.md` — release notes for 0.1.0
+  - `README.md` — step-by-step publishing guide
+- **Play Store SVG assets** under `assets/playstore/`:
+  - 512×512 app icon
+  - 1024×500 feature graphic
+  - 8 phone screenshots (540×960) covering Downloads, Torrents, Music, Speed Test, Plugins, Appearance, Add-Download, hero
+  - 2 tablet screenshots (1280×800) covering Downloads and Music
+- **`zendown://` and `magnet:` deep-link intent filters** in `AndroidManifest.xml`
+- **Battery-optimisation exemption** request (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) — opt-in at runtime
+- **Foreground service** permissions so downloads survive when the app is backgrounded
+- **Adaptive launcher icon** + Material 3 dark theme using brand colors
+- **Backup rules** (`backup_rules.xml`, `data_extraction_rules.xml`) covering the SQLite DB and shared-prefs
+- **Network security config** with HTTPS-only base config
+- **GitHub Actions** workflows:
+  - `android.yml` — builds signed AAB on every push, uploads to Play Store internal track on `v*` tags
+  - `privacy.yml` — publishes `playstore/privacy-policy.md` to GitHub Pages
+- **README** — new `## Mobile (Android)` section with build command and screenshot strip
+- **Build script** `scripts/build-android.sh` — one-command signed AAB build
+
+### Changed
+- `tauri.conf.json` — added `plugins.deep-link.mobile` so the `zendown://` deep link works on Android too
+- Android theme switched from default Material to brand-tinted Material 3 dark
+- App label normalised from `zendownload` to `ZenDownload`
+
+### Fixed
+- **Windows MSI bundling** — removed empty `"licenseFile": ""` from `tauri.conf.json` which caused `os error 3` during WIX bundling
+- README rewritten with a professional hero banner, 25 inline feature icons, and 7 polished app screenshots
+
 ## [0.1.0] - 2026-06-07
 
 ### Added

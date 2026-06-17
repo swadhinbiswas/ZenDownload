@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Globe, Network, HardDrive, Shield, Save, DownloadCloud, FileType, Bell, Languages, RefreshCw, Check, Loader2, Palette, Calendar, Database, MonitorSmartphone } from 'lucide-react';
+import { Globe, Network, HardDrive, Shield, Save, DownloadCloud, FileType, Bell, Languages, RefreshCw, Check, Loader2, Palette, Calendar, Database, MonitorSmartphone, FolderOpen } from 'lucide-react';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from '@/i18n/useTranslation';
 import { availableLanguages } from '@/i18n';
 import { WatchFolderSection, BandwidthProfileSection, VirusTotalSection } from '@/components/settings/AdvancedSections';
@@ -212,7 +213,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           <Label className="text-right font-semibold text-zinc-300">{cat.label}</Label>
                           <div className="col-span-3 flex space-x-3">
                             <Input value={localSettings[cat.key as keyof SettingsState] as string || ''} onChange={e => updateLocal(cat.key as keyof SettingsState, e.target.value)} className="flex-1 bg-zinc-900/50 border-white/10 text-zinc-300 font-mono text-xs h-10 rounded-xl focus-visible:ring-blue-500/50" />
-                            <Button type="button" variant="secondary" className="px-6 h-10 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/5 transition-all">Browse</Button>
+                            <Button type="button" variant="secondary" onClick={async () => {
+                                const folder = await open({ directory: true, multiple: false, title: `Select ${cat.label} download folder` });
+                                if (folder) updateLocal(cat.key as keyof SettingsState, folder);
+                              }} className="px-6 h-10 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/5 transition-all flex items-center gap-2"><FolderOpen className="h-4 w-4" />Browse</Button>
                           </div>
                         </div>
                       ))}

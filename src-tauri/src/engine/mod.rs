@@ -1,6 +1,9 @@
 pub mod http;
 pub mod stream;
 pub mod torrent;
+pub mod torrent_extras;
+pub mod torrent_search;
+pub mod torrent_discover;
 pub mod sftp;
 pub mod cloud;
 pub mod music;
@@ -44,8 +47,10 @@ pub mod clipboard_intel;
 pub mod plugin_system;
 pub mod mirror_network;
 pub mod analytics;
+#[cfg(test)] mod tests;
 
 use std::sync::{Arc, Mutex as StdMutex};
+use std::sync::atomic::AtomicBool;
 use tokio::sync::Mutex;
 use sqlx::{Pool, Sqlite};
 use tauri::{AppHandle, Emitter};
@@ -65,6 +70,8 @@ pub struct DownloadEngine {
     pub app: AppHandle,
     pub client: Client,
     pub active_downloads: Arc<StdMutex<std::collections::HashMap<String, tokio::task::JoinHandle<()>>>>,
+    pub active_children: Arc<StdMutex<std::collections::HashMap<String, u32>>>,
+    pub cancel_flags: Arc<StdMutex<std::collections::HashMap<String, Arc<AtomicBool>>>>,
     pub max_concurrent: Arc<Mutex<usize>>,
     pub torrent_engine: Arc<tokio::sync::RwLock<torrent::TorrentEngine>>,
     pub watch_folder_manager: Arc<watch_folder::WatchFolderManager>,
@@ -147,6 +154,8 @@ impl DownloadEngine {
                 builder.build().expect("Failed to build HTTP client")
             },
             active_downloads: Arc::new(StdMutex::new(std::collections::HashMap::new())),
+            active_children: Arc::new(StdMutex::new(std::collections::HashMap::new())),
+            cancel_flags: Arc::new(StdMutex::new(std::collections::HashMap::new())),
             max_concurrent: Arc::new(Mutex::new(1)),  // Default 1 sequential, user-configurable up to 3
             torrent_engine: Arc::new(tokio::sync::RwLock::new(torrent_engine)),
             watch_folder_manager: Arc::new(watch_folder::WatchFolderManager::new()),
@@ -177,9 +186,98 @@ impl DownloadEngine {
             }
         });
     }
+}
 
+/// Resolve the download save path based on the category, using per-category paths from settings.
+/// Falls back to the system Downloads directory.
+pub async fn resolve_category_path(db: &Pool<Sqlite>, category: Option<&str>) -> String {
+    let default = dirs::download_dir()
+        .map(|d| d.to_string_lossy().to_string())
+        .unwrap_or_else(|| ".".to_string());
+    
+    let cat = category.unwrap_or("General");
+    let setting_key = match cat {
+        "Music" | "music" | "Audio" | "audio" => "pathMusic",
+        "Video" | "video" => "pathVideo",
+        "Compressed" | "compressed" | "Archive" | "archive" => "pathCompressed",
+        "Documents" | "documents" | "Document" | "document" => "pathDocuments",
+        "Programs" | "programs" | "Program" | "program" => "pathPrograms",
+        _ => "pathGeneral",
+    };
+    
+    let path: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE key = ?")
+        .bind(setting_key)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten();
+    
+    path.filter(|p| !p.is_empty()).unwrap_or(default)
+}
+
+/// Ensure the save_path is a full file path (not a directory) for HTTP downloads.
+/// Torrent and yt-dlp save directories directly, but HTTP must have a file path.
+fn normalize_save_path(save_path: &str, file_name: &str, download_type: &str) -> String {
+    if download_type == "http" {
+        let p = std::path::Path::new(save_path);
+        // If it looks like a directory (no file extension, or ends with /), join filename
+        if p.extension().is_none() || save_path.ends_with('/') || save_path.ends_with('\\') {
+            if file_name.is_empty() || file_name.starts_with("download_") {
+                return save_path.to_string();
+            }
+            return format!("{}/{}", save_path.trim_end_matches('/'), file_name);
+        }
+    }
+    save_path.to_string()
+}
+
+impl DownloadEngine {
     pub async fn init_torrent_engine(&self, save_path: String) -> Result<(), String> {
         self.torrent_engine.write().await.initialize(save_path).await
+    }
+
+    /// Probe a URL with a HEAD request to determine if it's a direct file download.
+    /// Returns true if the server sends a binary/media file (not an HTML page).
+    pub async fn probe_direct_download(url: &str) -> bool {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(8))
+            .redirect(reqwest::redirect::Policy::limited(5))
+            .build()
+            .unwrap_or_default();
+        match client.head(url).send().await {
+            Ok(resp) => {
+                let status = resp.status();
+                if !status.is_success() && status.as_u16() != 304 && status.as_u16() != 302 { return false; }
+                let ct = resp.headers().get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("");
+                let ct_lower = ct.to_lowercase();
+                // Reject HTML — this is a web page, not a file
+                if ct_lower.contains("text/html") || ct_lower.contains("text/plain") { return false; }
+                // Accept known binary/media types
+                if ct_lower.contains("video/") || ct_lower.contains("audio/")
+                    || ct_lower.contains("image/") || ct_lower.contains("application/")
+                    || ct_lower.contains("binary") || ct_lower.contains("octet-stream") {
+                    return true;
+                }
+                // Check Content-Disposition for attachment
+                if let Some(cd) = resp.headers().get("content-disposition") {
+                    if let Ok(cds) = cd.to_str() {
+                        if cds.contains("attachment") { return true; }
+                    }
+                }
+                // Check Content-Length — if it has a substantial size, likely a file
+                if resp.headers().get("content-length")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .map(|len| len > 4096)
+                    .unwrap_or(false) {
+                    return true;
+                }
+                false
+            }
+            Err(_) => false,
+        }
     }
 
     pub async fn add_download(&self, mut url: String, save_path: String, threads: usize, category: Option<String>, extra_meta: Option<String>) -> Result<String, String> {
@@ -187,6 +285,16 @@ impl DownloadEngine {
         if crate::engine::web3::Web3Resolver::is_web3_protocol(&url) {
             url = crate::engine::web3::Web3Resolver::resolve_gateway(&url);
         }
+
+        // Override save path to category-specific folder only if it's the default Downloads dir
+        let default_dl = dirs::download_dir()
+            .map(|d| d.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let save_path = if save_path.is_empty() || save_path == default_dl || save_path == "." {
+            resolve_category_path(&self.db, category.as_deref()).await
+        } else {
+            save_path
+        };
 
         // Debrid Integration (Phase 3)
         if crate::engine::debrid::DebridEngine::is_premium_host(&url) {
@@ -287,11 +395,6 @@ impl DownloadEngine {
             category
         };
         
-        let host = url.split("://").nth(1)
-            .and_then(|s| s.split('/').next())
-            .unwrap_or("unknown")
-            .to_string();
-        
         // Extract URL extension ignoring query params AND URL fragments (#...).
         // Some pasted URLs include anchor fragments that should never become
         // part of the filename or extension detection.
@@ -328,23 +431,27 @@ impl DownloadEngine {
             }
         };
 
-        let is_known_stream_host = host.contains("youtube.com") || host.contains("youtu.be") || host.contains("bilibili.com") || host.contains("b23.tv") || host.contains("twitch.tv") || host.contains("vimeo.com") || host.contains("dailymotion.com") || host.contains("tiktok.com") || host.contains("twitter.com") || host.contains("x.com") || host.contains("instagram.com") || host.contains("facebook.com") || host.contains("fb.watch") || host.contains("threads.net") || crate::engine::adult_sites::is_adult_url(&url);
-
         let is_magnet = url.starts_with("magnet:");
         let is_torrent_file = url_ext == "torrent";
         let is_torrent = is_magnet || is_torrent_file;
 
-        // Default to yt-dlp ONLY if it specifically is a known streaming host. 
-        // Otherwise, route natively to our HTTP engine (like IDM). If the user grabs an m3u8 or an unknown CDN path, 
-        // HTTP engine is fast and handles raw bytes. Yt-dlp shouldn't intercept standard web links!
-        let is_stream = is_known_stream_host || url.contains("m3u8");
-        
+        // Three-tier routing:
+        // 1. Torrent → torrent engine
+        // 2. Known direct file extension → HTTP downloader
+        // 3. Unknown → probe with HEAD request to check if server sends a direct file,
+        //    then route to HTTP or yt-dlp accordingly.
         let download_type = if is_torrent {
             "torrent".to_string()
-        } else if is_stream {
-            "ytdlp".to_string()
-        } else {
+        } else if is_direct_file {
             "http".to_string()
+        } else {
+            // Not obviously a direct file — probe the server
+            let is_direct = Self::probe_direct_download(&url).await;
+            if is_direct {
+                "http".to_string()
+            } else {
+                "ytdlp".to_string()
+            }
         };
 
         let record = crate::db::DownloadRecord {
@@ -388,6 +495,12 @@ impl DownloadEngine {
         .await
         .map_err(|e| e.to_string())?;
 
+        // Notify frontend about the new download
+        let _ = self.app.emit("download-status", serde_json::json!({
+            "id": new_id,
+            "status": "Pending"
+        }));
+
         // Fire url.extract hook for plugins
         self.plugin_manager.fire("url.extract", serde_json::json!({
             "url": url.clone(),
@@ -401,7 +514,7 @@ impl DownloadEngine {
         let url_clone = url.clone();
         let download_id_clone = new_id.clone();
         let app_clone = self.app.clone();
-        let is_stream_for_meta = is_stream;
+        let is_stream_for_meta = download_type == "ytdlp";
         let extra_meta_clone = extra_meta.clone();
 
         tokio::spawn(async move {
@@ -544,20 +657,26 @@ impl DownloadEngine {
             db: pool,
             extra_meta: extra_meta.clone(),
         });
-        
+
         // Spawn download with auto-cleanup on completion
         let active_downloads = self.active_downloads.clone();
+        let active_children = self.active_children.clone();
+        let cancel_flags = self.cancel_flags.clone();
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        cancel_flags.lock().unwrap().insert(new_id.clone(), cancel_flag.clone());
         let ctx_clone = ctx.clone();
         let id_clone = new_id.clone();
         
         let handle = tokio::spawn(async move {
             if is_ytdlp {
-                self::stream::start_stream_download(ctx_clone).await;
+                self::stream::start_stream_download(ctx_clone, cancel_flag).await;
             } else {
                 self::http::start_download(ctx_clone).await;
             }
-            // Remove from active downloads when done
+            // Remove from active downloads and children when done
             active_downloads.lock().unwrap().remove(&id_clone);
+            active_children.lock().unwrap().remove(&id_clone);
+            cancel_flags.lock().unwrap().remove(&id_clone);
         });
         
         self.active_downloads.lock().unwrap().insert(new_id.clone(), handle);
@@ -589,8 +708,54 @@ impl DownloadEngine {
     }
 
     pub async fn remove_active_task(&self, id: &str) {
+        // Signal cancellation (cooperative — checked by the download loop)
+        if let Some(flag) = self.cancel_flags.lock().unwrap().get(id) {
+            flag.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        // Kill the child process first (yt-dlp, ffmpeg, etc.)
+        if let Some(pid) = self.active_children.lock().unwrap().remove(id) {
+            kill_process(pid);
+        }
+        // Then abort the tokio task
         if let Some(handle) = self.active_downloads.lock().unwrap().remove(id) {
             handle.abort();
+        }
+        // Clean up the cancel flag
+        self.cancel_flags.lock().unwrap().remove(id);
+    }
+
+    /// Clean up partial files for a cancelled/failed download
+    async fn cleanup_download_files(&self, save_path: &str, file_name: &str) {
+        let dir = std::path::Path::new(save_path);
+        let base = dir.join(file_name);
+        
+        // Remove the main file if it exists
+        if base.exists() {
+            let _ = tokio::fs::remove_file(&base).await;
+        }
+        
+        // Clean up yt-dlp temp files:
+        // - *.part files (partial downloads)
+        // - *.ytdl files (yt-dlp temp)
+        // - files matching our download filename pattern
+        let stem = base.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        if !stem.is_empty() {
+            if let Ok(mut dir_entries) = tokio::fs::read_dir(dir).await {
+                while let Ok(Some(entry)) = dir_entries.next_entry().await {
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+                    // Match: exact filename, partial downloads, yt-dlp temp files
+                    if name_str == file_name
+                        || name_str.ends_with(".part")
+                        || name_str.ends_with(".ytdl")
+                        || (name_str.starts_with(stem) && (name_str.ends_with(".part") || name_str.ends_with(".ytdl")))
+                        // yt-dlp sometimes creates temp files like <stem>.f<id>.mp4.part
+                        || (name_str.contains(stem) && name_str.contains(".part"))
+                    {
+                        let _ = tokio::fs::remove_file(entry.path()).await;
+                    }
+                }
+            }
         }
     }
 
@@ -648,10 +813,7 @@ impl DownloadEngine {
             let _ = self.torrent_engine.read().await.delete_torrent(&id, false).await;
         } else {
             self.remove_active_task(&id).await;
-            let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
-            if file_path.exists() {
-                let _ = tokio::fs::remove_file(&file_path).await;
-            }
+            self.cleanup_download_files(&record.save_path, &record.file_name).await;
         }
 
         sqlx::query("UPDATE downloads SET status = 'Cancelled' WHERE id = ?")
@@ -680,10 +842,7 @@ impl DownloadEngine {
                 let _ = self.torrent_engine.read().await.delete_torrent(&id, true).await;
             } else {
                 self.remove_active_task(&id).await;
-                let file_path = std::path::Path::new(&record.save_path).join(&record.file_name);
-                if file_path.exists() {
-                    let _ = tokio::fs::remove_file(&file_path).await;
-                }
+                self.cleanup_download_files(&record.save_path, &record.file_name).await;
             }
         }
 
@@ -773,10 +932,12 @@ impl DownloadEngine {
             return Ok(());
         }
 
+        // Normalize save_path: if it's a directory (torrent/stream), join with file_name
+        let normalized_path = normalize_save_path(&record.save_path, &record.file_name, &record.download_type);
         let ctx = Arc::new(self::http::DownloadContext {
             id: id.clone(),
             url: record.url,
-            save_path: record.save_path,
+            save_path: normalized_path,
             threads: record.connections as usize,
             client: self.client.clone(),
             app: self.app.clone(),
@@ -790,7 +951,7 @@ impl DownloadEngine {
 
         let handle = tokio::spawn(async move {
             if is_ytdlp {
-                self::stream::start_stream_download(ctx).await;
+                self::stream::start_stream_download(ctx, Arc::new(std::sync::atomic::AtomicBool::new(false))).await;
             } else {
                 self::http::start_download(ctx).await;
             }
@@ -866,7 +1027,7 @@ impl DownloadEngine {
             let ctx = Arc::new(self::http::DownloadContext {
                 id: id.clone(),
                 url: record.url,
-                save_path: record.save_path,
+                save_path: normalize_save_path(&record.save_path, &record.file_name, &record.download_type),
                 threads: record.connections as usize,
                 client: self.client.clone(),
                 app: self.app.clone(),
@@ -879,7 +1040,7 @@ impl DownloadEngine {
             let id_for_cleanup = id.clone();
             let handle = tokio::spawn(async move {
                 if is_ytdlp {
-                    self::stream::start_stream_download(ctx).await;
+                    self::stream::start_stream_download(ctx, Arc::new(std::sync::atomic::AtomicBool::new(false))).await;
                 } else {
                     self::http::start_download(ctx).await;
                 }
@@ -929,7 +1090,7 @@ impl DownloadEngine {
             let ctx = Arc::new(self::http::DownloadContext {
                 id: id.clone(),
                 url: record.url,
-                save_path: record.save_path,
+                save_path: normalize_save_path(&record.save_path, &record.file_name, &record.download_type),
                 threads: record.connections as usize,
                 client: self.client.clone(),
                 app: self.app.clone(),
@@ -941,7 +1102,7 @@ impl DownloadEngine {
             let id_for_cleanup = id.clone();
             let handle = tokio::spawn(async move {
                 if is_ytdlp {
-                    self::stream::start_stream_download(ctx).await;
+                    self::stream::start_stream_download(ctx, Arc::new(std::sync::atomic::AtomicBool::new(false))).await;
                 } else {
                     self::http::start_download(ctx).await;
                 }
@@ -994,7 +1155,7 @@ async fn promote_queued_downloads(
         let ctx = Arc::new(http::DownloadContext {
             id: id.clone(),
             url: record.url,
-            save_path: record.save_path,
+            save_path: normalize_save_path(&record.save_path, &record.file_name, &record.download_type),
             threads: record.connections as usize,
             client: client.clone(),
             app: app.clone(),
@@ -1006,13 +1167,34 @@ async fn promote_queued_downloads(
         let id_for_cleanup = id.clone();
         let handle = tokio::spawn(async move {
             if is_ytdlp {
-                stream::start_stream_download(ctx).await;
+                stream::start_stream_download(ctx, Arc::new(std::sync::atomic::AtomicBool::new(false))).await;
             } else {
                 http::start_download(ctx).await;
             }
             active_downloads_clone.lock().unwrap().remove(&id_for_cleanup);
         });
         active_downloads.lock().unwrap().insert(id, handle);
+    }
+}
+
+/// Kill a process by PID (cross-platform).
+fn kill_process(pid: u32) {
+    let p = pid.to_string();
+    #[cfg(unix)]
+    {
+        // Kill entire process group (yt-dlp + ffmpeg + all children)
+        // Negative PID sends signal to process group
+        let _ = std::process::Command::new("kill").args(["-TERM", &format!("-{}", pid)]).output();
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        // Force kill any survivors
+        let _ = std::process::Command::new("kill").args(["-9", &format!("-{}", pid)]).output();
+        // Fallback: find and kill orphans
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let _ = std::process::Command::new("pkill").args(["-P", &p]).output();
+    }
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("taskkill").args(["/F", "/T", "/PID", &p]).output();
     }
 }
 

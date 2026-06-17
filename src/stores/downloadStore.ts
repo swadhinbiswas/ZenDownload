@@ -64,8 +64,8 @@ interface DownloadStore {
     updateStatus: (id: string, status: Download['status']) => void;
     filterCategory: string | null;
     setFilterCategory: (category: string | null) => void;
-    currentView: 'downloads' | 'subscriptions' | 'history' | 'grabber' | 'stream' | 'music' | 'playlist' | 'adult' | 'tv' | 'site_grabber' | 'advanced' | 'feed' | 'plugins' | 'plugin_store' | 'plugin_page' | 'speedtest';
-    setCurrentView: (view: 'downloads' | 'subscriptions' | 'history' | 'grabber' | 'stream' | 'music' | 'playlist' | 'adult' | 'tv' | 'site_grabber' | 'advanced' | 'feed' | 'plugins' | 'plugin_store' | 'plugin_page' | 'speedtest') => void;
+    currentView: 'downloads' | 'subscriptions' | 'history' | 'grabber' | 'stream' | 'music' | 'playlist' | 'adult' | 'tv' | 'site_grabber' | 'advanced' | 'feed' | 'plugins' | 'plugin_store' | 'plugin_page' | 'speedtest' | 'torrent_search';
+    setCurrentView: (view: 'downloads' | 'subscriptions' | 'history' | 'grabber' | 'stream' | 'music' | 'playlist' | 'adult' | 'tv' | 'site_grabber' | 'advanced' | 'feed' | 'plugins' | 'plugin_store' | 'plugin_page' | 'speedtest' | 'torrent_search') => void;
     toggleSelection: (id: string) => void;
     clearSelection: () => void;
     selectAll: () => void;
@@ -161,6 +161,11 @@ export const useDownloadStore = create<DownloadStore>((set, get) => ({
                     } : d
                 )
             }));
+        });
+
+        // Refresh the full download list when external sources (API server, etc.) add downloads
+        await listen('downloads-updated', () => {
+            get().fetchDownloads();
         });
     },
     fetchDownloads: async () => {

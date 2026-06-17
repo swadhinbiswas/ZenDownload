@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a0814"/><stop offset=".5" stop-color="#1a1033"/><stop offset="1" stop-color="#0d0820"/></linearGradient>
+<linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset=".5" stop-color="#8b5cf6"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+<radialGradient id="g1" cx=".15" cy=".4" r=".55"><stop offset="0" stop-color="#6366f1" stop-opacity=".45"/><stop offset="1" stop-color="#6366f1" stop-opacity="0"/></radialGradient>
+<radialGradient id="g2" cx=".85" cy=".6" r=".55"><stop offset="0" stop-color="#a855f7" stop-opacity=".4"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/></radialGradient>
+<linearGradient id="text" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a5b4fc"/><stop offset="1" stop-color="#d8b4fe"/></linearGradient>
+</defs>
+<rect width="1024" height="500" fill="url(#bg)"/>
+<rect width="1024" height="500" fill="url(#g1)"/>
+<rect width="1024" height="500" fill="url(#g2)"/>
+<g opacity=".12" stroke="#a78bfa" stroke-width="1" fill="none">
+<path d="M0 80 Q 256 60 512 80 T 1024 80"/>
+<path d="M0 420 Q 256 400 512 420 T 1024 420"/>
+</g>
+
+<g transform="translate(80, 130)">
+<rect width="240" height="240" rx="54" fill="url(#brand)"/>
+<g transform="translate(120, 120)" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+<path d="M0 -70 V 14"/>
+<path d="M-32 -20 L 0 14 L 32 -20"/>
+<path d="M-54 38 V 54 a 12 12 0 0 0 12 12 H 42 a 12 12 0 0 0 12 -12 V 38"/>
+</g>
+</g>
+
+<g transform="translate(360, 0)" font-family="Arial">
+<text x="0" y="180" font-size="68" font-weight="800" fill="url(#text)" letter-spacing="-1.5">ZenDownload</text>
+<text x="2" y="222" font-size="20" font-weight="500" fill="#a1a1aa" letter-spacing="3.5">UNIVERSAL DOWNLOAD MANAGER</text>
+<text x="0" y="290" font-size="22" font-weight="600" fill="#e4e4e7">Fast downloads. Torrent streaming. 1,462+ sites.</text>
+<text x="0" y="320" font-size="22" font-weight="600" fill="#e4e4e7">Beautiful native UI. No ads. No tracking.</text>
+<g transform="translate(0, 360)">
+<rect width="180" height="50" rx="12" fill="url(#brand)"/>
+<text x="90" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="white">Get it now</text>
+<rect x="200" width="200" height="50" rx="12" fill="none" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="300" y="32" text-anchor="middle" font-size="16" font-weight="600" fill="#c4b5fd">zen-download.app</text>
+</g>
+</g>
+
+<g transform="translate(820, 130)" opacity=".9">
+<rect width="120" height="240" rx="20" fill="#0d0820" stroke="#1f1838" stroke-width="1"/>
+<rect x="8" y="8" width="104" height="20" rx="4" fill="#1f1838"/>
+<circle cx="100" cy="18" r="3" fill="#22c55e"/>
+<rect x="8" y="36" width="104" height="60" rx="6" fill="url(#brand)" opacity=".4"/>
+<rect x="8" y="104" width="50" height="6" rx="3" fill="#1f1838"/>
+<rect x="8" y="116" width="80" height="4" rx="2" fill="#1f1838"/>
+<rect x="8" y="124" width="60" height="4" rx="2" fill="#1f1838"/>
+<rect x="8" y="138" width="104" height="40" rx="6" fill="#1f1838"/>
+<rect x="8" y="138" width="68" height="40" rx="6" fill="url(#brand)"/>
+<rect x="8" y="186" width="104" height="40" rx="6" fill="#1f1838"/>
+<rect x="8" y="186" width="42" height="40" rx="6" fill="#10b981"/>
+</g>
+</svg>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Plus, PlaySquare, Rss, Trash2, ExternalLink, RefreshCw, Play, Filter, Download } from 'lucide-react';
+import { Plus, PlaySquare, Rss, Trash2, ExternalLink, RefreshCw, Play, Filter, Download, Globe } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +13,7 @@ interface Subscription {
   id: number;
   name: string | null;
   url: string;
-  sub_type: 'rss' | 'youtube';
+  sub_type: 'rss' | 'youtube' | 'rsshub';
   enabled: number;
   interval_minutes: number;
   include_keywords: string | null;
@@ -25,7 +26,7 @@ interface Subscription {
 const defaultForm = {
   name: '',
   url: '',
-  sub_type: 'rss' as 'rss' | 'youtube',
+  sub_type: 'rss' as 'rss' | 'youtube' | 'rsshub',
   interval_minutes: '60',
   include_keywords: '',
   exclude_keywords: '',
@@ -36,7 +37,12 @@ export function SubscriptionList() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [form, setForm] = useState(defaultForm);
   const [isLoading, setIsLoading] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'rss' | 'youtube' | 'enabled' | 'disabled'>('all');
+  const [filter, setFilter] = useState<'all' | 'rss' | 'rsshub' | 'youtube' | 'enabled' | 'disabled'>('all');
+  const [showRsshub, setShowRsshub] = useState(false);
+  const [rsshubRoutes, setRsshubRoutes] = useState<any[]>([]);
+  const [rsshubLoading, setRsshubLoading] = useState(false);
+  const [rsshubQuery, setRsshubQuery] = useState('');
+  const [rsshubUrl, setRsshubUrl] = useState('https://rsshub.app');
 
   const fetchSubscriptions = async () => {
     try {
@@ -55,7 +61,7 @@ export function SubscriptionList() {
     return subscriptions.filter((sub) => {
       if (filter === 'enabled') return sub.enabled === 1;
       if (filter === 'disabled') return sub.enabled === 0;
-      if (filter === 'rss') return sub.sub_type === 'rss';
+      if (filter === 'rss' || filter === 'rsshub') return sub.sub_type === 'rss' || sub.sub_type === 'rsshub';
       if (filter === 'youtube') return sub.sub_type === 'youtube';
       return true;
     });
@@ -123,6 +129,13 @@ export function SubscriptionList() {
           <p className="text-zinc-500 text-sm mt-1">Auto-download RSS feeds and YouTube channels with per-source rules.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="secondary" className="h-9 px-4 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/20 text-[13px] gap-2"
+            onClick={async () => { setShowRsshub(true); setRsshubLoading(true);
+              try { const routes = await invoke<any[]>('discover_rsshub_routes', { rsshubUrl: rsshubUrl || null });
+                setRsshubRoutes(routes); } catch { setRsshubRoutes([]); }
+              setRsshubLoading(false); }}>
+            <Rss className="w-4 h-4" />Browse RSSHub Routes
+          </Button>
           <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
             <SelectTrigger className="w-[150px] h-9 bg-zinc-900/50 border-white/[0.08] text-white rounded-lg text-[13px]">
               <Filter className="w-4 h-4 mr-2 text-zinc-500" />
@@ -143,12 +156,13 @@ export function SubscriptionList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <Input value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="Subscription name" className="bg-zinc-900/50 border-white/[0.08] text-white h-10 rounded-lg" />
           <Input value={form.url} onChange={(e) => setForm(prev => ({ ...prev, url: e.target.value }))} placeholder="RSS or YouTube URL" className="bg-zinc-900/50 border-white/[0.08] text-white h-10 rounded-lg" />
-          <Select value={form.sub_type} onValueChange={(v) => setForm(prev => ({ ...prev, sub_type: v as 'rss' | 'youtube' }))}>
+          <Select value={form.sub_type} onValueChange={(v) => setForm(prev => ({ ...prev, sub_type: v as 'rss' | 'youtube' | 'rsshub' }))}>
             <SelectTrigger className="bg-zinc-900/50 border-white/[0.08] text-white h-10 rounded-lg text-[13px]">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
               <SelectItem value="rss">RSS</SelectItem>
+              <SelectItem value="rsshub">RSSHub</SelectItem>
               <SelectItem value="youtube">YouTube</SelectItem>
             </SelectContent>
           </Select>
@@ -194,7 +208,7 @@ export function SubscriptionList() {
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
-                  {sub.sub_type === 'youtube' ? <PlaySquare className="w-5 h-5 text-red-500" /> : <Rss className="w-5 h-5 text-orange-500" />}
+                  {sub.sub_type === 'youtube' ? <PlaySquare className="w-5 h-5 text-red-500" /> : sub.sub_type === 'rsshub' ? <Globe className="w-5 h-5 text-orange-400" /> : <Rss className="w-5 h-5 text-orange-500" />}
                 </div>
                 <div className="min-w-0">
                   <h4 className="text-sm font-semibold text-zinc-200 truncate pr-2">{sub.name || sub.url}</h4>
@@ -251,6 +265,68 @@ export function SubscriptionList() {
           </Card>
         ))}
       </div>
+
+      {/* RSSHub Route Browser Modal */}
+      <Dialog open={showRsshub} onOpenChange={setShowRsshub}>
+        <DialogContent className="max-w-3xl max-h-[85vh] bg-zinc-950 border-zinc-800 text-white overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Globe className="w-5 h-5 text-orange-400" />
+              RSSHub Route Browser
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-2 mb-3">
+            <Input value={rsshubUrl} onChange={e => setRsshubUrl(e.target.value)}
+              placeholder="RSSHub instance URL" className="flex-1 bg-zinc-900/50 border-white/[0.08] text-white h-9 rounded-lg text-sm" />
+            <Input value={rsshubQuery} onChange={e => setRsshubQuery(e.target.value)}
+              placeholder="Search routes..." className="flex-1 bg-zinc-900/50 border-white/[0.08] text-white h-9 rounded-lg text-sm" />
+            <Button variant="secondary" size="sm" onClick={async () => { setRsshubLoading(true);
+              try { const routes = await invoke<any[]>('discover_rsshub_routes', { rsshubUrl: rsshubUrl || null });
+                setRsshubRoutes(routes); } catch { setRsshubRoutes([]); }
+              setRsshubLoading(false); }} className="h-9 px-3 bg-white/10 hover:bg-white/20 rounded-lg">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+            {rsshubLoading ? (
+              <div className="text-center py-12 text-zinc-500">Loading routes from {rsshubUrl}...</div>
+            ) : rsshubRoutes.length === 0 ? (
+              <div className="text-center py-12 text-zinc-500">
+                <Globe className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
+                <p className="text-sm text-zinc-400">No routes loaded</p>
+                <p className="text-xs text-zinc-600 mt-1">Make sure your RSSHub instance is running at {rsshubUrl}</p>
+              </div>
+            ) : (
+              rsshubRoutes
+                .filter((r: any) => !rsshubQuery || r.name.toLowerCase().includes(rsshubQuery.toLowerCase()) || (r.description || '').toLowerCase().includes(rsshubQuery.toLowerCase()))
+                .slice(0, 200)
+                .map((route: any) => {
+                  const sampleRoute = Array.isArray(route.routes) ? route.routes[0]?.path || '' : '';
+                  const rsshubRouteUrl = rsshubUrl.replace(/\/$/, '') + sampleRoute;
+                  return (
+                    <div key={route.name} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors group">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-zinc-200 truncate">{route.name}</span>
+                          {sampleRoute && <code className="text-[11px] text-zinc-500 font-mono truncate hidden sm:inline">{sampleRoute}</code>}
+                        </div>
+                        {route.description && <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-1">{route.description}</p>}
+                      </div>
+                      <Button variant="ghost" size="sm" className="shrink-0 h-8 px-3 text-[12px] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-all rounded-lg"
+                        onClick={() => {
+                          navigator.clipboard.writeText(rsshubRouteUrl);
+                          setForm(prev => ({ ...prev, url: rsshubRouteUrl, sub_type: 'rsshub', name: route.name }));
+                          setShowRsshub(false);
+                        }}>
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                      </Button>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

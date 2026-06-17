@@ -18,6 +18,7 @@ import { AdultSitePage } from "./components/pages/AdultSitePage";
 import { TVPage } from "./components/pages/TVPage";
 import { SiteGrabberPage } from "./components/pages/SiteGrabberPage";
 import { AdvancedSettingsPage } from "./components/pages/AdvancedSettingsPage";
+import { TorrentSearchPage } from "./components/pages/TorrentSearchPage";
 import { FeedPage } from "./components/pages/FeedPage";
 import { PluginManagerPage } from "./components/pages/PluginManagerPage";
 import { PluginStorePage } from "./components/pages/PluginStorePage";
@@ -209,6 +210,7 @@ function App() {
            currentView === 'plugin_store' ? <PluginStorePage onBack={() => setCurrentView('plugins')} /> :
            currentView === 'plugin_page' ? <PluginPageRenderer /> :
            currentView === 'speedtest' ? <SpeedTestPage /> :
+           currentView === 'torrent_search' ? <TorrentSearchPage /> :
            <DownloadList />}
         </main>
       </div>

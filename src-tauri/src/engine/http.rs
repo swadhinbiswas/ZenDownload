@@ -360,12 +360,30 @@ async fn run_single_thread_with_path(ctx: &Arc<DownloadContext>, save_path: Stri
         .await
         .unwrap_or(0);
 
+    // Extract cookies from extra_meta for sites that need authentication (Pixabay, etc.)
+    let cookies_from_meta: Option<String> = ctx.extra_meta.as_deref()
+        .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+        .and_then(|v| v.get("cookies").and_then(|c| c.as_str().map(|s| s.to_string())))
+        .filter(|c| !c.is_empty());
+
+    // Extract user_agent from extra_meta
+    let ua_from_meta: Option<String> = ctx.extra_meta.as_deref()
+        .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+        .and_then(|v| v.get("user_agent").and_then(|c| c.as_str().map(|s| s.to_string())))
+        .filter(|c| !c.is_empty());
+
     let mut response_opt = None;
     let mut last_error = String::new();
     for _ in 0..3 {
         let mut req = ctx.client.get(&ctx.url);
         if downloaded > 0 {
             req = req.header("Range", format!("bytes={}-", downloaded));
+        }
+        if let Some(ref cookies) = cookies_from_meta {
+            req = req.header("Cookie", cookies.as_str());
+        }
+        if let Some(ref ua) = ua_from_meta {
+            req = req.header("User-Agent", ua.as_str());
         }
 
         match req.send().await {

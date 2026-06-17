@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "ZenDownload",
+    "packageName": "com.zendownload.app",
+    "versionCode": 1000,
+    "versionName": "0.1.0",
+    "category": "PRODUCTIVITY",
+    "contentRating": "PEGI 3",
+    "targetAudience": {
+      "ageGroups": ["ADULTS", "TEENS"],
+      "notForKids": true
+    },
+    "languages": ["en-US"],
+    "primaryLanguage": "en-US",
+    "website": "https://zendownload.app",
+    "supportUrl": "https://github.com/swadhinbiswas/ZenDownload/issues",
+    "email": "support@zivlor.com",
+    "privacyPolicyUrl": "https://zendownload.app/privacy"
+  },
+  "storeListing": {
+    "title": "ZenDownload — Universal Download Manager",
+    "shortDescription": "Fast downloads. Torrent streaming. Videos from 1,462+ sites. Beautiful native UI.",
+    "fullDescription": "ZenDownload is a fast, modern download manager that handles HTTP, BitTorrent, magnet links, music downloads, and video extraction from 1,462+ sites — all in one beautiful native app.\n\nWhether you are grabbing a single file, streaming a torrent while it downloads, or pulling music from YouTube and SoundCloud with full metadata, ZenDownload gets out of your way.\n\n★ DOWNLOAD ENGINE\n• Multi-threaded HTTP with up to 8 parallel connections per file\n• BitTorrent with DHT, PEX, magnet resolution, and sequential streaming\n• Streaming video/audio from 1,462+ sites via yt-dlp — YouTube, Twitter/X, Reddit, TikTok, Instagram, Twitch, Vimeo, SoundCloud, Rumble, Bitchute\n• HLS / DASH adaptive streams (.m3u8 / .mpd)\n• Smart URL routing: every URL is HEAD-probed to decide direct vs streaming\n• Debrid integration: Real-Debrid, AllDebrid, Premiumize\n• M3U / IPTV playlist import\n• Music downloader with album art and full ID3 metadata\n\n★ QUEUE & AUTOMATION\n• Smart queue with configurable concurrency (1–3 simultaneous)\n• Batch import: paste a list, auto-detect types\n• Watch folders: auto-add new files dropped in a directory\n• Scheduler with time-based download windows\n• Bandwidth profiles and per-download speed limits\n• RSS, RSSHub, and YouTube channel subscriptions\n• Clipboard monitor: auto-detect copied URLs with category preview\n\n★ ORGANIZATION\n• Category routing: Video, Music, Documents, Compressed, Programs\n• File preview: videos, audio, images, text, PDFs\n• Complete history with search and statistics\n\n★ INTERFACE\n• Native dark UI with 12 accent colors\n• Adjustable corner radius (square to fully pill)\n• Background density: solid, glass (frosted), transparent\n• Compact mode and font-size presets\n• Speed test with multi-server benchmark and live graph\n• System tray with live badge for active downloads\n\n★ PLUGIN SYSTEM\n• Hook-based events: download.start, download.complete, download.error\n• Plugin Store with 40+ community plugins\n• Discord notifications, Spotify import, qBittorrent sync, IPTV browser, and more\n\n★ PRIVACY\n• Everything stays on your device\n• No telemetry, no analytics, no tracking\n• Cookie import is local; you choose which browser\n• No accounts required\n\n★ OPEN SOURCE\nMIT licensed. Built with Tauri 2, React 19, Rust, yt-dlp, and librqbit. Contributions welcome.",
+    "tags": [
+      "downloader",
+      "torrent",
+      "video",
+      "music",
+      "yt-dlp",
+      "debrid",
+      "open-source"
+    ],
+    "iconography": {
+      "appIcon": "assets/playstore/icon-512.png",
+      "featureGraphic": "assets/playstore/feature-graphic.png"
+    },
+    "graphics": {
+      "phoneScreenshots": [
+        "assets/playstore/screenshot-phone-1.png",
+        "assets/playstore/screenshot-phone-2.png",
+        "assets/playstore/screenshot-phone-3.png",
+        "assets/playstore/screenshot-phone-4.png",
+        "assets/playstore/screenshot-phone-5.png",
+        "assets/playstore/screenshot-phone-6.png",
+        "assets/playstore/screenshot-phone-7.png",
+        "assets/playstore/screenshot-phone-8.png"
+      ],
+      "tabletScreenshots": [
+        "assets/playstore/screenshot-tablet-1.png",
+        "assets/playstore/screenshot-tablet-2.png"
+      ]
+    }
+  },
+  "release": {
+    "track": "internal",
+    "rolloutFraction": 1.0,
+    "releaseNotes": "Initial public release.\n\n• Multi-protocol download engine (HTTP, BitTorrent, HLS, magnet)\n• Streaming from 1,462+ sites via yt-dlp\n• Music downloader with full ID3 metadata\n• Speed test with live graph\n• 40+ installable plugins\n• 12 accent colors, dark theme, glass effects\n• Debrid integration (Real-Debrid, AllDebrid, Premiumize)\n• Clipboard monitor, scheduler, watch folders, RSS subscriptions"
+  }
+}

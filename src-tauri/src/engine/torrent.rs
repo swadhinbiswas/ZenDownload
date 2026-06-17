@@ -10,7 +10,7 @@ use librqbit::{
     Session, SessionOptions, SessionPersistenceConfig,
     AddTorrent, AddTorrentOptions, AddTorrentResponse,
     ManagedTorrent,
-    PeerConnectionOptions,
+    PeerConnectionOptions, generate_azereus_style,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -191,7 +191,9 @@ impl TorrentEngine {
             persistence: Some(SessionPersistenceConfig::Json {
                 folder: Some(session_persistence_path()),
             }),
-            peer_id: None,
+            // Spoof as qBittorrent 4.5.2 for tracker whitelists and ratio systems.
+            // Trackers see the peer_id in announce requests — -qB4520- means qBittorrent.
+            peer_id: Some(generate_azereus_style(*b"qB", (4, 5, 2, 0))),
             peer_opts: Some(peer_opts()),
             // Wide listen port range for many concurrent connections
             listen_port_range: Some(6881u16..6999),
@@ -587,5 +589,29 @@ impl Clone for TorrentEngine {
             app: self.app.clone(),
             db: self.db.clone(),
         }
+    }
+}
+
+impl TorrentEngine {
+    /// List files in torrent
+    pub async fn list_files(&self, download_id: &str) -> Result<Vec<crate::engine::torrent_extras::TorrentFileEntry>, String> {
+        use crate::engine::torrent_extras::TorrentFileEntry;
+        let torrents = self.torrents.read().await;
+        let entry = torrents.get(download_id).ok_or_else(|| "Torrent not found".to_string())?;
+        let files = entry.handle.with_metadata(|m| {
+            m.file_infos.iter().enumerate().map(|(i, f)| {
+                TorrentFileEntry { index: i, path: f.relative_filename.to_string_lossy().to_string(), size: f.len, selected: true }
+            }).collect::<Vec<_>>()
+        }).unwrap_or_default();
+        Ok(files)
+    }
+
+    /// Get health based on active peers
+    pub async fn get_torrent_health(&self, download_id: &str) -> Result<String, String> {
+        let torrents = self.torrents.read().await;
+        let entry = torrents.get(download_id).ok_or_else(|| "Torrent not found".to_string())?;
+        let stats = entry.handle.stats();
+        let peers = stats.live.map_or(0, |l| l.snapshot.peer_stats.live);
+        Ok(match peers { 0 => "dead", 1..=4 => "poor", 5..=19 => "decent", 20..=99 => "good", _ => "excellent" }.into())
     }
 }

@@ -62,8 +62,8 @@ pub async fn start_automation_worker(db: SqlitePool, app: tauri::AppHandle) {
             
         for sub in subs {
             match sub.sub_type.as_str() {
-                "rss" => {
-                    if let Err(err) = check_rss_feed(&sub, &db).await {
+                "rss" | "rsshub" => {
+                    if let Err(err) = check_rss_feed(&sub, &db, &app).await {
                         let _ = sqlx::query("UPDATE subscriptions SET last_error = ? WHERE id = ?")
                             .bind(err)
                             .bind(sub.id)
@@ -72,7 +72,7 @@ pub async fn start_automation_worker(db: SqlitePool, app: tauri::AppHandle) {
                     }
                 }
                 "youtube" => {
-                    if let Err(err) = check_youtube_channel(&sub, &db).await {
+                    if let Err(err) = check_youtube_channel(&sub, &db, &app).await {
                         let _ = sqlx::query("UPDATE subscriptions SET last_error = ? WHERE id = ?")
                             .bind(err)
                             .bind(sub.id)
@@ -196,7 +196,7 @@ async fn already_downloaded(url: &str, db: &SqlitePool) -> bool {
     count > 0
 }
 
-pub async fn check_rss_feed(sub: &Subscription, db: &SqlitePool) -> Result<(), String> {
+pub async fn check_rss_feed(sub: &Subscription, db: &SqlitePool, app: &tauri::AppHandle) -> Result<(), String> {
     println!("Checking RSS feed: {}", sub.url);
     let include = split_keywords(sub.include_keywords.as_ref());
     let exclude = split_keywords(sub.exclude_keywords.as_ref());
@@ -240,14 +240,14 @@ pub async fn check_rss_feed(sub: &Subscription, db: &SqlitePool) -> Result<(), S
 
         let normalized = canonicalize_url(&link);
         if !already_downloaded(&normalized, db).await {
-            queue_if_new(&normalized, sub.category.as_deref().unwrap_or("General"), db).await;
+            queue_if_new(&normalized, sub.category.as_deref().unwrap_or("General"), db, app).await;
         }
     }
 
     Ok(())
 }
 
-pub async fn check_youtube_channel(sub: &Subscription, db: &SqlitePool) -> Result<(), String> {
+pub async fn check_youtube_channel(sub: &Subscription, db: &SqlitePool, app: &tauri::AppHandle) -> Result<(), String> {
     println!("Checking YouTube channel: {}", sub.url);
     let include = split_keywords(sub.include_keywords.as_ref());
     let exclude = split_keywords(sub.exclude_keywords.as_ref());
@@ -284,14 +284,14 @@ pub async fn check_youtube_channel(sub: &Subscription, db: &SqlitePool) -> Resul
 
         let normalized = canonicalize_url(&item_url);
         if !already_downloaded(&normalized, db).await {
-            queue_if_new(&normalized, sub.category.as_deref().unwrap_or("Video"), db).await;
+            queue_if_new(&normalized, sub.category.as_deref().unwrap_or("Video"), db, app).await;
         }
     }
 
     Ok(())
 }
 
-pub async fn run_subscription_now(sub_id: i64, db: &SqlitePool) -> Result<(), String> {
+pub async fn run_subscription_now(sub_id: i64, db: &SqlitePool, app: &tauri::AppHandle) -> Result<(), String> {
     let sub = sqlx::query_as::<_, Subscription>("SELECT id, name, url, sub_type, enabled, interval_minutes, include_keywords, exclude_keywords, category, last_checked, last_error FROM subscriptions WHERE id = ?")
         .bind(sub_id)
         .fetch_one(db)
@@ -299,8 +299,8 @@ pub async fn run_subscription_now(sub_id: i64, db: &SqlitePool) -> Result<(), St
         .map_err(|e| e.to_string())?;
 
     match sub.sub_type.as_str() {
-        "rss" => check_rss_feed(&sub, db).await?,
-        "youtube" => check_youtube_channel(&sub, db).await?,
+        "rss" | "rsshub" => check_rss_feed(&sub, db, app).await?,
+        "youtube" => check_youtube_channel(&sub, db, app).await?,
         _ => return Err("Unsupported subscription type".into()),
     }
 
@@ -325,33 +325,107 @@ pub async fn set_subscription_enabled(sub_id: i64, enabled: bool, db: &SqlitePoo
         .map_err(|e| e.to_string())
 }
 
-async fn queue_if_new(url: &str, category: &str, db: &SqlitePool) {
+async fn queue_if_new(url: &str, category: &str, db: &SqlitePool, app: &tauri::AppHandle) {
     let exists = sqlx::query_scalar::<_, i32>("SELECT count(*) FROM downloads WHERE url = ?")
         .bind(url)
         .fetch_one(db)
         .await
         .unwrap_or(0);
         
-    if exists == 0 {
+    if exists > 0 { return; }
+
+    // Use the engine's add_download for proper routing, events, and queue management
+    // Use category-specific path from settings
+    let save_path = crate::engine::resolve_category_path(db, Some(category)).await;
+    
+    if let Some(engine) = app.try_state::<crate::engine::DownloadEngine>() {
+        let engine = engine.inner().clone();
+        let extra_meta = Some(serde_json::json!({
+            "source": "subscription",
+        }).to_string());
+        if let Err(e) = engine.add_download(
+            url.to_string(),
+            save_path,
+            8,
+            Some(category.to_string()),
+            extra_meta,
+        ).await {
+            eprintln!("Subscription queue failed: {}", e);
+        }
+    } else {
+        // Fallback: raw SQL if engine not available (still uses category path)
+        let save_path = crate::engine::resolve_category_path(db, Some(category)).await;
         let new_id = uuid::Uuid::new_v4().to_string();
-        let filename = "Automated_Download".to_string();
-        let save_path = dirs::download_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "/tmp".to_string());
-        
         let _ = sqlx::query(
             "INSERT INTO downloads (id, url, file_name, save_path, category, status, download_type, connections, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, 'Queued', 'http', 8, ?)"
         )
-        .bind(&new_id)
-        .bind(url)
-        .bind(&filename)
-        .bind(&save_path)
-        .bind(category)
-        .bind("Pending") // Start as pending, the HTTP loop or user could resume it
-        .bind("http")
-        .bind(8i64)
-        .bind(chrono::Utc::now().to_rfc3339())
-        .execute(db)
-        .await;
-        println!("Queued new automated download: {}", url);
+        .bind(&new_id).bind(url).bind("Subscription_Download").bind(&save_path)
+        .bind(category).bind(chrono::Utc::now().to_rfc3339())
+        .execute(db).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matches_keywords_include_match() {
+        let include = vec!["mp4".to_string(), "video".to_string()];
+        let exclude: Vec<String> = vec![];
+        assert!(matches_keywords("cool video.mp4", &include, &exclude));
+    }
+
+    #[test]
+    fn matches_keywords_include_no_match() {
+        let include = vec!["pdf".to_string()];
+        let exclude: Vec<String> = vec![];
+        assert!(!matches_keywords("video.mp4", &include, &exclude));
+    }
+
+    #[test]
+    fn matches_keywords_exclude_blocks() {
+        let include: Vec<String> = vec![];
+        let exclude = vec!["nsfw".to_string()];
+        assert!(!matches_keywords("nsfw video.mp4", &include, &exclude));
+    }
+
+    #[test]
+    fn matches_keywords_no_filter() {
+        let include: Vec<String> = vec![];
+        let exclude: Vec<String> = vec![];
+        assert!(matches_keywords("anything", &include, &exclude));
+    }
+
+    #[test]
+    fn split_keywords_handles_empty() {
+        let result = split_keywords(None);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn split_keywords_comma_separated() {
+        let input = "mp4, video, audio ".to_string();
+        let result = split_keywords(Some(&input));
+        assert_eq!(result, vec!["mp4", "video", "audio"]);
+    }
+
+    #[test]
+    fn canonicalize_url_removes_fragment() {
+        let result = canonicalize_url("https://example.com/video.mp4#section");
+        assert_eq!(result, "https://example.com/video.mp4");
+    }
+
+    #[test]
+    fn canonicalize_url_keeps_query() {
+        let result = canonicalize_url("https://example.com/video.mp4?quality=hd");
+        assert_eq!(result, "https://example.com/video.mp4?quality=hd");
+    }
+
+    #[test]
+    fn canonicalize_url_keeps_clean_url() {
+        let result = canonicalize_url("https://example.com/video.mp4");
+        assert_eq!(result, "https://example.com/video.mp4");
     }
 }

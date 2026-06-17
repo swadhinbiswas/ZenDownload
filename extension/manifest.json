@@ -11,7 +11,8 @@
     "contextMenus",
     "notifications",
     "webRequest",
-    "nativeMessaging"
+    "nativeMessaging",
+    "cookies"
   ],
   "host_permissions": [
     "<all_urls>"

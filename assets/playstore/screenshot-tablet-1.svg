@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a0814"/><stop offset="1" stop-color="#14102a"/></linearGradient>
+<linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset=".5" stop-color="#8b5cf6"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+<linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1530"/><stop offset="1" stop-color="#0f0b22"/></linearGradient>
+<linearGradient id="prog" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+</defs>
+<rect width="1280" height="800" fill="url(#bg)"/>
+<rect x="0" y="0" width="1280" height="32" fill="#0d0820"/>
+
+<rect x="0" y="32" width="240" height="768" fill="#0d0820"/>
+<rect x="240" y="32" width="1" height="768" fill="#1f1838"/>
+<g transform="translate(20, 52)">
+<rect width="32" height="32" rx="8" fill="url(#brand)"/>
+<text x="44" y="22" font-family="Arial" font-size="15" font-weight="700" fill="#e4e4e7">ZenDownload</text>
+</g>
+<g font-family="Arial" font-size="13" fill="#a1a1aa">
+<rect x="12" y="112" width="216" height="36" rx="8" fill="url(#brand)" opacity=".15"/>
+<rect x="12" y="112" width="3" height="36" rx="2" fill="url(#brand)"/>
+<text x="60" y="135" fill="#e4e4e7" font-weight="600">Downloads</text>
+<text x="60" y="175">Torrents</text>
+<text x="60" y="215">Videos</text>
+<text x="60" y="255">Music</text>
+<text x="60" y="295">Speed Test</text>
+<text x="60" y="335">Plugins</text>
+<text x="60" y="375">Settings</text>
+</g>
+
+<g transform="translate(264, 56)" font-family="Arial">
+<text font-size="28" font-weight="800" fill="#fafafa">Downloads</text>
+<text y="24" font-size="14" fill="#a1a1aa">12 active - 4.2 GB today - 8.7 MB/s</text>
+
+<g transform="translate(720, -16)">
+<rect width="280" height="58" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<text x="14" y="22" font-size="11" fill="#71717a" letter-spacing="1">SPEED</text>
+<text x="14" y="44" font-size="18" font-weight="700" fill="#22c55e">8.7 MB/s</text>
+<rect x="140" width="140" height="58" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<text x="154" y="22" font-size="11" fill="#71717a" letter-spacing="1">TODAY</text>
+<text x="154" y="44" font-size="18" font-weight="700" fill="#e4e4e7">4.2 GB</text>
+</g>
+
+<g transform="translate(0, 60)">
+<rect width="1000" height="44" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<rect x="12" y="8" width="280" height="28" rx="6" fill="#0d0820"/>
+<text x="42" y="26" font-size="12" fill="#71717a">Search downloads...</text>
+<rect x="852" y="8" width="136" height="28" rx="6" fill="#6366f1"/>
+<text x="920" y="26" text-anchor="middle" font-size="12" font-weight="600" fill="white">+ Add URL</text>
+</g>
+
+<g transform="translate(0, 124)">
+<rect width="1000" height="86" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<rect x="16" y="16" width="54" height="54" rx="10" fill="url(#brand)"/>
+<g transform="translate(43, 43)" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="-6,-10 12,0 -6,10"/></g>
+<text x="86" y="34" font-size="15" font-weight="700" fill="#fafafa">youtube-dl-demo.mp4</text>
+<text x="86" y="54" font-size="12" fill="#a1a1aa">YouTube - 1080p - yt-dlp</text>
+<text x="86" y="72" font-size="11" fill="#71717a">142 MB - 8.2 MB/s - 18s left</text>
+<rect x="86" y="78" width="800" height="3" rx="2" fill="#0d0820"/>
+<rect x="86" y="78" width="640" height="3" rx="2" fill="url(#prog)"/>
+<circle cx="900" cy="44" r="14" fill="#22c55e"/>
+<polyline points="894,44 898,48 906,40" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+
+<g transform="translate(0, 222)">
+<rect width="1000" height="86" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<rect x="16" y="16" width="54" height="54" rx="10" fill="#7c3aed"/>
+<text x="43" y="50" text-anchor="middle" font-size="22" font-weight="800" fill="white">♫</text>
+<text x="86" y="34" font-size="15" font-weight="700" fill="#fafafa">Midnight_City.flac</text>
+<text x="86" y="54" font-size="12" fill="#a1a1aa">SoundCloud - FLAC 1411 kbps</text>
+<text x="86" y="72" font-size="11" fill="#71717a">26.4 MB / 28.4 MB - 2.1 MB/s</text>
+<rect x="86" y="78" width="800" height="3" rx="2" fill="#0d0820"/>
+<rect x="86" y="78" width="744" height="3" rx="2" fill="url(#prog)"/>
+</g>
+
+<g transform="translate(0, 320)">
+<rect width="1000" height="86" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<rect x="16" y="16" width="54" height="54" rx="10" fill="#0ea5e9"/>
+<g transform="translate(43, 43)" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle r="10"/><path d="M-10 0a10 10 0 0 1 10-10M0 -10a10 10 0 0 1 10 10"/></g>
+<text x="86" y="34" font-size="15" font-weight="700" fill="#fafafa">ubuntu-24.04-desktop-amd64.iso</text>
+<text x="86" y="54" font-size="12" fill="#a1a1aa">releases.ubuntu.com - 8 connections</text>
+<text x="86" y="72" font-size="11" fill="#71717a">3.2 GB / 5.7 GB - 24.8 MB/s - 1m 32s left</text>
+<rect x="86" y="78" width="800" height="3" rx="2" fill="#0d0820"/>
+<rect x="86" y="78" width="448" height="3" rx="2" fill="url(#prog)"/>
+</g>
+
+<g transform="translate(0, 418)">
+<rect width="1000" height="86" rx="10" fill="url(#card)" stroke="#1f1838"/>
+<rect x="16" y="16" width="54" height="54" rx="10" fill="#16a34a"/>
+<text x="86" y="34" font-size="15" font-weight="700" fill="#fafafa">debian-12-netinst.iso.torrent</text>
+<text x="86" y="54" font-size="12" fill="#a1a1aa">BitTorrent - 24 peers - DHT</text>
+<text x="86" y="72" font-size="11" fill="#71717a">412 MB / 624 MB - 6.1 MB/s - 36s left</text>
+<rect x="86" y="78" width="800" height="3" rx="2" fill="#0d0820"/>
+<rect x="86" y="78" width="528" height="3" rx="2" fill="url(#prog)"/>
+</g>
+</g>
+</svg>

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960" width="540" height="960">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0814"/><stop offset="1" stop-color="#14102a"/></linearGradient>
+<linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset=".5" stop-color="#8b5cf6"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+<linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1530"/><stop offset="1" stop-color="#0f0b22"/></linearGradient>
+<linearGradient id="prog" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+</defs>
+<rect width="540" height="960" fill="url(#bg)"/>
+<rect x="0" y="0" width="540" height="64" fill="#0d0820"/>
+<text x="20" y="40" font-family="Arial" font-size="13" font-weight="700" fill="#e4e4e7">9:41</text>
+<g transform="translate(460, 24)"><rect width="20" height="12" rx="2" fill="none" stroke="#a1a1aa" stroke-width="1.2"/><rect x="2" y="2" width="14" height="8" rx="1" fill="#22c55e"/></g>
+
+<g transform="translate(0, 70)" font-family="Arial">
+<text x="270" y="80" text-anchor="middle" font-size="34" font-weight="800" fill="url(#brand)" letter-spacing="-1">Add Download</text>
+<text x="270" y="112" text-anchor="middle" font-size="14" fill="#a1a1aa">Paste any URL or magnet link</text>
+</g>
+
+<g transform="translate(20, 220)">
+<rect width="500" height="80" rx="16" fill="url(#card)" stroke="#1f1838"/>
+<rect x="14" y="14" width="52" height="52" rx="10" fill="url(#brand)"/>
+<g transform="translate(40, 40)" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M0 -12 V 4"/><path d="M-5 -3 L 0 4 L 5 -3"/><path d="M-9 8 V 12 a 2 2 0 0 0 2 2 H 7 a 2 2 0 0 0 2 -2 V 8"/>
+</g>
+<text x="80" y="34" font-family="Arial" font-size="13" font-weight="700" fill="#fafafa">URL or magnet link</text>
+<text x="80" y="54" font-family="Arial" font-size="11" fill="#71717a">https://...</text>
+<text x="486" y="48" text-anchor="end" font-family="Arial" font-size="11" fill="#a78bfa" font-weight="700">Paste</text>
+</g>
+
+<g transform="translate(20, 320)" font-family="Arial">
+<text font-size="11" font-weight="700" fill="#71717a" letter-spacing="2">QUICK SOURCES</text>
+
+<g transform="translate(0, 16)">
+<rect width="500" height="56" rx="14" fill="url(#card)" stroke="#1f1838"/>
+<rect x="12" y="12" width="32" height="32" rx="8" fill="#ef4444"/>
+<text x="28" y="34" text-anchor="middle" font-size="11" font-weight="800" fill="white">YT</text>
+<text x="56" y="26" font-size="12" font-weight="600" fill="#fafafa">YouTube</text>
+<text x="56" y="42" font-size="10" fill="#71717a">Paste link - pick quality</text>
+<text x="476" y="34" text-anchor="end" font-size="11" fill="#a78bfa">Open</text>
+</g>
+
+<g transform="translate(0, 80)">
+<rect width="500" height="56" rx="14" fill="url(#card)" stroke="#1f1838"/>
+<rect x="12" y="12" width="32" height="32" rx="8" fill="#000"/>
+<text x="28" y="34" text-anchor="middle" font-size="11" font-weight="800" fill="white">X</text>
+<text x="56" y="26" font-size="12" font-weight="600" fill="#fafafa">Twitter / X</text>
+<text x="56" y="42" font-size="10" fill="#71717a">Tweet with video</text>
+<text x="476" y="34" text-anchor="end" font-size="11" fill="#a78bfa">Open</text>
+</g>
+
+<g transform="translate(0, 144)">
+<rect width="500" height="56" rx="14" fill="url(#card)" stroke="#1f1838"/>
+<rect x="12" y="12" width="32" height="32" rx="8" fill="#ff4500"/>
+<text x="28" y="34" text-anchor="middle" font-size="11" font-weight="800" fill="white">R</text>
+<text x="56" y="26" font-size="12" font-weight="600" fill="#fafafa">Reddit</text>
+<text x="56" y="42" font-size="10" fill="#71717a">Post with video or gif</text>
+<text x="476" y="34" text-anchor="end" font-size="11" fill="#a78bfa">Open</text>
+</g>
+
+<g transform="translate(0, 208)">
+<rect width="500" height="56" rx="14" fill="url(#card)" stroke="#1f1838"/>
+<rect x="12" y="12" width="32" height="32" rx="8" fill="#1db954"/>
+<text x="28" y="34" text-anchor="middle" font-size="11" font-weight="800" fill="white">S</text>
+<text x="56" y="26" font-size="12" font-weight="600" fill="#fafafa">SoundCloud</text>
+<text x="56" y="42" font-size="10" fill="#71717a">Audio track</text>
+<text x="476" y="34" text-anchor="end" font-size="11" fill="#a78bfa">Open</text>
+</g>
+
+<g transform="translate(0, 272)">
+<rect width="500" height="56" rx="14" fill="url(#card)" stroke="#1f1838"/>
+<rect x="12" y="12" width="32" height="32" rx="8" fill="#000"/>
+<circle cx="28" cy="28" r="8" fill="none" stroke="#22c55e" stroke-width="3"/>
+<text x="56" y="26" font-size="12" font-weight="600" fill="#fafafa">Torrent file or magnet</text>
+<text x="56" y="42" font-size="10" fill="#71717a">magnet:?xt=urn:btih:...</text>
+<text x="476" y="34" text-anchor="end" font-size="11" fill="#a78bfa">Open</text>
+</g>
+</g>
+
+<g transform="translate(20, 720)">
+<rect width="500" height="56" rx="16" fill="url(#brand)"/>
+<text x="250" y="36" text-anchor="middle" font-family="Arial" font-size="15" font-weight="700" fill="white">Add to downloads</text>
+</g>
+
+<text x="270" y="804" text-anchor="middle" font-family="Arial" font-size="11" fill="#71717a">Supports HTTP, HTTPS, magnet, .torrent, 1,462+ sites</text>
+
+<rect x="0" y="884" width="540" height="76" fill="#0d0820"/>
+</svg>

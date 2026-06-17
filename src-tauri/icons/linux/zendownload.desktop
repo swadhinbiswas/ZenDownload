@@ -9,7 +9,7 @@ Type=Application
 Categories=Network;FileTransfer;Download;
 MimeType=application/x-bittorrent;application/x-rar-compressed;application/zip;application/x-7z-compressed;application/x-tar;video/mp4;video/x-matroska;audio/mpeg;
 StartupNotify=true
-StartupWMClass=ZenDownload
+StartupWMClass=zendownload
 Keywords=download;manager;torrent;video;audio;
 Actions=show-window;pause-all;resume-all;
 

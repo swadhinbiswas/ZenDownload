@@ -1,336 +1,234 @@
-(function() {
+(function () {
   'use strict';
 
-  const state = {
-    detectedFiles: new Map(),
-    pageLinks: [],
-    panelOpen: false,
-    floatingButton: null,
-    activeMedia: null,
-    hideTimeout: null,
-    qualityPicker: null,
-    scanInterval: null,
-  };
+  const ST = { fbtn: null, activeEl: null, hideT: null, picker: null, scanInt: null, panelOpen: false, capturedMedia: new Map() };
+  const MEDIA_EXT = /\.(mp4|mkv|avi|webm|mov|flv|wmv|3gp|m4v|ts|m2ts|m3u8|mpd|ogg|ogv|opus|mp3|wav|flac|aac|m4a|wma)(\?|#|$)/i;
+  const FILE_EXT = /\.(zip|rar|7z|tar|gz|bz2|xz|exe|msi|apk|dmg|iso|img|deb|rpm|pkg|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|epub|mobi|azw3|mp4|mkv|avi|webm|mov|flv|wmv|3gp|m4v|ts|m2ts|mp3|wav|flac|aac|ogg|m4a|opus|wma|jpg|jpeg|png|gif|svg|webp|bmp|torrent|m3u8|mpd)(\?|#|$)/i;
+const isYT = () => /(youtube\.com|youtu\.be)$/.test(location.hostname);
 
-  const FILE_EXTENSIONS = /\.(zip|rar|7z|tar|gz|bz2|xz|exe|msi|apk|dmg|iso|img|deb|rpm|pkg|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|epub|mobi|azw3|mp4|mkv|avi|webm|mov|flv|wmv|3gp|m4v|ts|m2ts|mp3|wav|flac|aac|ogg|m4a|opus|wma|jpg|jpeg|png|gif|svg|webp|bmp|torrent)(\?|#|$)/i;
+  // ============================================================
+  //  NETWORK INTERCEPTION
+  // ============================================================
+  let netHijacked = false;
+  function hijackNet() {
+    if (netHijacked) return; netHijacked = true;
+    const origF = window.fetch;
+    window.fetch = async function(...a) {
+      const r = await origF.apply(this, a);
+      try {
+        const u = typeof a[0] === 'string' ? a[0] : (a[0] && a[0].url);
+        if (u && MEDIA_EXT.test(u)) ST.capturedMedia.set(u, { url: u, ts: Date.now() });
+      } catch {}
+      return r;
+    };
+    const origO = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(m, u) { this.__zu = u; return origO.apply(this, arguments); };
+    const origS = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function() {
+      if (this.__zu && MEDIA_EXT.test(this.__zu)) ST.capturedMedia.set(this.__zu, { url: this.__zu, ts: Date.now() });
+      return origS.apply(this, arguments);
+    };
+  }
+  hijackNet();
 
-  const YOUTUBE_HOSTS = ['www.youtube.com', 'm.youtube.com', 'youtube.com', 'youtu.be'];
-  const isYouTube = () => YOUTUBE_HOSTS.includes(window.location.hostname);
-
-  function isFileLink(url) {
-    try { const u = new URL(url); return FILE_EXTENSIONS.test(u.pathname + (u.search || '')); }
-    catch { return false; }
+  // ============================================================
+  //  SHADOW DOM + IFRAME TRAVERSAL
+  // ============================================================
+  function deepQ(root, sel) {
+    let r = [];
+    try { r = Array.from(root.querySelectorAll(sel)); } catch {}
+    try { root.querySelectorAll('*').forEach(e => { if (e.shadowRoot) r = r.concat(deepQ(e.shadowRoot, sel)); }); } catch {}
+    return r;
   }
 
-  function extractFileName(url) {
-    try { const u = new URL(url); return decodeURIComponent(u.pathname.split('/').pop() || '') || 'file'; }
-    catch { return 'file'; }
+  // ============================================================
+  //  FLOATING DOWNLOAD BUTTON
+  // ============================================================
+  function mkBtn() {
+    if (ST.fbtn) return;
+    const b = document.createElement('div');
+    b.className = 'zd-floating-btn';
+    b.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span class="zd-btn-label">Download</span>';
+    b.onclick = e => { e.stopPropagation(); e.preventDefault(); doDl(); };
+    b.addEventListener('mouseenter', () => { if (ST.hideT) { clearTimeout(ST.hideT); ST.hideT = null; } });
+    b.addEventListener('mouseleave', () => hideBtn());
+    document.body.appendChild(b);
+    ST.fbtn = b;
   }
-
-  function scanPageLinks() {
-    state.pageLinks = Array.from(document.querySelectorAll('a[href]')).map(a => ({
-      url: a.href,
-      text: (a.textContent || '').trim().slice(0, 200),
-      is_file: isFileLink(a.href),
-      file_type: isFileLink(a.href) ? extractFileName(a.href).split('.').pop()?.toLowerCase() : null,
-      file_size: null,
-    }));
-    return state.pageLinks;
-  }
-
-  function dedupeLinks(links) {
-    const seen = new Set();
-    return links.filter(l => { if (seen.has(l.url)) return false; seen.add(l.url); return true; });
-  }
-
-  chrome.runtime.onMessage.addListener((message) => {
-    switch (message.action) {
-      case 'file-detected':
-        state.detectedFiles.set(message.file.url, message.file);
-        break;
-      case 'show-link-panel':
-        showLinkPanel();
-        break;
-      case 'capture-all-links':
-        const links = dedupeLinks(state.pageLinks.filter(l => l.is_file));
-        if (links.length === 0) return;
-        chrome.runtime.sendMessage({ action: 'send-batch', urls: links.map(f => f.url), pageUrl: window.location.href });
-        break;
+  function posBtn(el) {
+    if (!ST.fbtn) return;
+    const r = el.getBoundingClientRect();
+    // Position at the bottom-right CORNER of the element (outside its bounds)
+    // so it never overlaps other interactive elements like player controls or nav buttons.
+    const btnW = 130, btnH = 32;
+    if (el.tagName === 'A') {
+      // For links: top-right corner outside
+      ST.fbtn.style.top = Math.max(4, r.top - btnH - 4) + 'px';
+      ST.fbtn.style.left = Math.max(4, r.right - btnW) + 'px';
+      ST.fbtn.querySelector('.zd-btn-label').textContent = 'Download file';
+    } else {
+      // For video/audio/button elements: bottom-right corner outside
+      ST.fbtn.style.top = Math.max(4, r.bottom + 4) + 'px';
+      ST.fbtn.style.left = Math.max(4, r.right - btnW) + 'px';
+      ST.fbtn.querySelector('.zd-btn-label').textContent = 'Download';
     }
+    // Keep button within viewport bounds
+    const vpW = window.innerWidth, vpH = window.innerHeight;
+    const curLeft = parseInt(ST.fbtn.style.left) || 0;
+    const curTop = parseInt(ST.fbtn.style.top) || 0;
+    if (curLeft + btnW > vpW) ST.fbtn.style.left = Math.max(4, vpW - btnW - 4) + 'px';
+    if (curTop + btnH > vpH) ST.fbtn.style.top = Math.max(4, vpH - btnH - 4) + 'px';
+  }
+  function showBtn(el) { mkBtn(); ST.activeEl = el; ST.fbVisible = true; posBtn(el); ST.fbtn.classList.add('zd-visible'); if (ST.hideT) { clearTimeout(ST.hideT); ST.hideT = null; } }
+  function hideBtn() { if (ST.hideT) clearTimeout(ST.hideT); ST.hideT = setTimeout(() => { if (ST.fbtn) ST.fbtn.classList.remove('zd-visible'); ST.activeEl = null; ST.fbVisible = false; }, 400); }
+
+  // ============================================================
+  //  DOWNLOAD LOGIC — universal routing
+  // ============================================================
+  function doDl() {
+    const el = ST.activeEl;
+    if (!el) return;
+    if (el.tagName === 'A') { const u = el.href; if (u && !/^(blob|data|javascript):/i.test(u)) { sendIt(u); return; } }
+    let src = findSrc(el);
+    // Direct media URL with recognized extension → download directly
+    if (src && !/^(blob|data):/i.test(src) && MEDIA_EXT.test(src)) { sendIt(src); return; }
+    // Blob URL, data URL, no source, or unknown URL → yt-dlp quality picker
+    showPicker(location.href);
+  }
+
+  function findSrc(el) {
+    if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+      let s = el.currentSrc || el.src; if (s && s !== location.href) return s;
+      const srcEl = el.querySelector('source[src]'); if (srcEl) return srcEl.src;
+    }
+    const inner = el.querySelector('video, audio');
+    if (inner) {
+      let s = inner.currentSrc || inner.src; if (s && s !== location.href) return s;
+      const srcEl = inner.querySelector('source[src]'); if (srcEl) return srcEl.src;
+    }
+    let c = el;
+    for (let i = 0; i < 10 && c && c !== document.body; i++) {
+      const s = c.src || c.href || c.dataset?.src || c.dataset?.url || c.getAttribute('data-video-url')
+        || c.getAttribute('data-stream-url') || c.getAttribute('data-media-url') || c.getAttribute('data-source')
+        || c.getAttribute('data-mp4') || c.getAttribute('data-video-src') || c.getAttribute('data-hls-url');
+      if (s && s !== location.href && !s.startsWith('javascript:')) return s;
+      if (c.poster && c.tagName === 'VIDEO') return c.poster;
+      c = c.parentElement;
+    }
+    const any = document.querySelector('video[src], video > source[src], audio[src], audio > source[src]');
+    if (any) { const s = any.currentSrc || any.src || (any.querySelector('source[src]')?.src); if (s && s !== location.href) return s; }
+    return null;
+  }
+
+  function sendIt(url) {
+    chrome.runtime.sendMessage({ action: 'send-download', url, pageUrl: location.href, title: document.title });
+    toast('Sent to ZenDownload');
+  }
+
+  // ============================================================
+  //  QUALITY PICKER
+  // ============================================================
+  function showPicker(videoUrl) {
+    if (ST.picker) return;
+    const ov = document.createElement('div');
+    ov.className = 'zd-quality-overlay';
+    ov.innerHTML = '<div class="zd-quality-panel"><div class="zd-quality-header"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Select Quality</div><div class="zd-quality-list" id="zd-quality-list"><div class="zd-quality-loading">Fetching available formats...</div></div><button class="zd-quality-cancel">Cancel</button></div>';
+    document.body.appendChild(ov); ST.picker = ov;
+    ov.querySelector('.zd-quality-cancel').onclick = () => { ov.remove(); ST.picker = null; };
+    ov.onclick = e => { if (e.target === ov) { ov.remove(); ST.picker = null; } };
+    const list = ov.querySelector('#zd-quality-list');
+    chrome.runtime.sendMessage({ action: 'probe-formats', url: videoUrl }, resp => {
+      if (resp?.formats?.length) renderF(list, resp.formats, videoUrl, ov);
+      else renderD(list, videoUrl, ov);
+    });
+  }
+  function renderF(list, fmts, url, ov) {
+    list.innerHTML = '';
+    const g = {};
+    fmts.forEach(f => { const k = f.resolution || f.quality_label || f.format_note || 'x'; if (!g[k]) g[k] = []; g[k].push(f); });
+    Object.keys(g).sort((a,b)=>(parseInt(a)||0)-(parseInt(b)||0)).reverse().forEach(res => {
+      const best = g[res][0], label = best.quality_label || best.format_note || res;
+      const it = document.createElement('div'); it.className = 'zd-quality-item';
+      it.innerHTML = '<span class="zd-quality-res">'+label+'</span><span class="zd-quality-ext">'+(best.extension||best.ext||'mp4')+'</span>'+(best.filesize?'<span class="zd-quality-size">'+(best.filesize/1048576).toFixed(1)+' MB</span>':'')+'<span class="zd-quality-btn">Download</span>';
+      it.onclick = () => { chrome.runtime.sendMessage({ action: 'send-download', url, pageUrl: location.href, title: document.title, extra_meta: { format: best.format_id || 'best' } }); toast('Sending '+label); ov.remove(); ST.picker = null; };
+      list.appendChild(it);
+    });
+  }
+  function renderD(list, url, ov) {
+    list.innerHTML = '';
+    [['Best','best'],['4K','bestvideo[height<=2160]+bestaudio/best[height<=2160]'],['1080p','bestvideo[height<=1080]+bestaudio/best[height<=1080]'],['720p','bestvideo[height<=720]+bestaudio/best[height<=720]'],['480p','bestvideo[height<=480]+bestaudio/best[height<=480]'],['360p','bestvideo[height<=360]+bestaudio/best[height<=360]'],['Audio','bestaudio/best']].forEach(([l,f]) => {
+      const it = document.createElement('div'); it.className = 'zd-quality-item';
+      it.innerHTML = '<span class="zd-quality-res">'+l+'</span><span class="zd-quality-ext">mp4</span><span class="zd-quality-btn">Download</span>';
+      it.onclick = () => { chrome.runtime.sendMessage({ action: 'send-download', url, pageUrl: location.href, title: document.title, extra_meta: { format: f } }); toast('Sending '+l); ov.remove(); ST.picker = null; };
+      list.appendChild(it);
+    });
+  }
+
+  function toast(m) { const ex=document.querySelector('.zd-toast'); if(ex)ex.remove(); const t=document.createElement('div'); t.className='zd-toast';t.textContent=m; document.body.appendChild(t); requestAnimationFrame(()=>t.classList.add('zd-toast-visible')); setTimeout(()=>{t.classList.remove('zd-toast-visible');setTimeout(()=>t.remove(),300)},2500); }
+
+  // ============================================================
+  //  ATTACH TO ELEMENTS — show button on ANY video/audio/file-link
+  // ============================================================
+  function attach(el) {
+    if (el.dataset.zd) return; el.dataset.zd = '1';
+    el.addEventListener('mouseenter', () => showBtn(el));
+    el.addEventListener('mouseleave', hideBtn);
+    if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+      el.addEventListener('timeupdate', () => { if (ST.activeEl === el) posBtn(el); }, { passive: true });
+      el.addEventListener('play', () => { if (ST.activeEl === el) posBtn(el); }, { passive: true });
+    }
+  }
+  function attachLink(a) { if (FILE_EXT.test(a.href) && !a.dataset.zd) { a.dataset.zd='1'; a.addEventListener('mouseenter',()=>showBtn(a)); a.addEventListener('mouseleave',hideBtn); } }
+
+  // ============================================================
+  //  SCAN ALL — aggressive detection on any site
+  // ============================================================
+  function scan() {
+    // All video/audio elements including Shadow DOM
+    deepQ(document, 'video, audio').forEach(attach);
+    // File download links
+    document.querySelectorAll('a[href]').forEach(a => attachLink(a));
+    // Video player containers — look for src attributes
+    const containers = '[class*="video"],[class*="player"],[class*="media"],[id*="video"],[id*="player"],[id*="media"],[data-video-url],[data-stream-url],[data-src],[data-video-src],[data-hls-url],[data-mp4],video-js,[class*="plyr"],[class*="jw"],[class*="flowplayer"],[class*="vjs"],[class*="video-container"],[class*="html5-video"],[class*="video-wrapper"],[class*="player-wrapper"]';
+    try {
+      document.querySelectorAll(containers).forEach(el => {
+        if (el.dataset.zdC) return; el.dataset.zdC = '1';
+        const s = el.src || el.href || el.dataset?.src || el.dataset?.url || el.dataset?.videoUrl || el.dataset?.streamUrl || el.querySelector('video,audio')?.currentSrc;
+        if ((s && !/^(blob|data|javascript):/i.test(s) && s !== location.href) || el.tagName === 'VIDEO' || el.tagName === 'AUDIO' || el.querySelector('video,audio')) {
+          attach(el);
+        }
+      });
+    } catch {}
+    // Iframes
+    try { document.querySelectorAll('iframe').forEach(f => { try { const d = f.contentDocument || f.contentWindow?.document; if (d) d.querySelectorAll('video,audio').forEach(attach); } catch {} }); } catch {}
+    // Watch for dynamically inserted <video> elements that don't match above selectors
+    try { document.querySelectorAll('*').forEach(el => { if ((el.tagName === 'VIDEO' || el.tagName === 'AUDIO') && !el.dataset.zd) attach(el); }); } catch {}
+  }
+
+  chrome.runtime.onMessage.addListener(msg => {
+    if (msg.action === 'show-link-panel') showPanel();
+    else if (msg.action === 'media-detected' && msg.url && !/^(blob|data):/i.test(msg.url)) { ST.capturedMedia.set(msg.url,{url:msg.url,ts:Date.now()}); }
   });
 
-  // === Floating download button ===
-  function createFloatingButton() {
-    if (state.floatingButton) return;
-    const btn = document.createElement('div');
-    btn.className = 'zd-floating-btn';
-    btn.innerHTML = [
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">',
-      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>',
-      '<polyline points="7 10 12 15 17 10"></polyline>',
-      '<line x1="12" y1="15" x2="12" y2="3"></line></svg>',
-      '<span>Download with ZenDownload</span>',
-    ].join('');
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (state.activeMedia) {
-        const src = state.activeMedia.currentSrc || state.activeMedia.src;
-        if (!src) return;
-        if (isYouTube()) {
-          showYouTubeQualityPicker(src);
-        } else {
-          chrome.runtime.sendMessage({ action: 'send-download', url: src, pageUrl: window.location.href, title: document.title });
-          showToast('Sent to ZenDownload');
-        }
-      }
+  // ============================================================
+  //  CAPTURED MEDIA PANEL
+  // ============================================================
+  function showPanel() {
+    if (ST.panelOpen) return; ST.panelOpen = true;
+    const items = [...new Map(ST.capturedMedia.values()).values()];
+    const p = document.createElement('div'); p.className = 'zd-link-panel';
+    p.innerHTML = '<div class="zd-panel-header"><div><h3>Captured Media</h3><p>'+items.length+' items</p></div><button class="zd-panel-close">&times;</button></div><button class="zd-panel-download-all" style="margin:8px 16px;">Download All</button><div class="zd-panel-list"></div>';
+    document.body.appendChild(p);
+    const list = p.querySelector('.zd-panel-list');
+    list.innerHTML = items.length ? items.map(m => '<div class="zd-link-item zd-file"><input type="checkbox" checked data-url="'+m.url.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'"><div class="zd-link-info"><div class="zd-link-text">'+m.url.slice(0,80)+'</div><div class="zd-link-url">'+m.url+'</div></div></div>').join('') : '<div class="zd-empty">No media detected. Play a video to capture its URL.</div>';
+    p.querySelector('.zd-panel-close').onclick = () => { p.classList.remove('zd-panel-open'); setTimeout(()=>{p.remove();ST.panelOpen=false;},250); };
+    p.querySelector('.zd-panel-download-all').onclick = () => {
+      const urls = Array.from(list.querySelectorAll('input:checked')).map(c=>c.dataset.url).filter(Boolean);
+      if (urls.length) chrome.runtime.sendMessage({action:'send-batch',urls,pageUrl:location.href});
     };
-    // Keep button visible when hovering the button itself
-    btn.addEventListener('mouseenter', () => { if (state.hideTimeout) { clearTimeout(state.hideTimeout); state.hideTimeout = null; } });
-    btn.addEventListener('mouseleave', () => { hideFloatingButton(); });
-    document.body.appendChild(btn);
-    state.floatingButton = btn;
+    requestAnimationFrame(()=>p.classList.add('zd-panel-open'));
   }
 
-  function positionFloatingButton(media) {
-    if (!state.floatingButton) return;
-    const rect = media.getBoundingClientRect();
-    // Position at bottom-center of the video
-    state.floatingButton.style.top = `${rect.bottom - 44}px`;
-    state.floatingButton.style.left = `${rect.left + rect.width / 2 - 100}px`;
-  }
-
-  function showFloatingButton(media) {
-    createFloatingButton();
-    state.activeMedia = media;
-    positionFloatingButton(media);
-    state.floatingButton.classList.add('zd-visible');
-    if (state.hideTimeout) { clearTimeout(state.hideTimeout); state.hideTimeout = null; }
-  }
-
-  function hideFloatingButton() {
-    if (state.hideTimeout) clearTimeout(state.hideTimeout);
-    state.hideTimeout = setTimeout(() => {
-      if (state.floatingButton) state.floatingButton.classList.remove('zd-visible');
-      state.activeMedia = null;
-      state.hideTimeout = null;
-    }, 300);
-  }
-
-  function attachFloatingButton(media) {
-    if (media.dataset.zdAttached) return;
-    media.dataset.zdAttached = '1';
-    media.addEventListener('mouseenter', () => showFloatingButton(media));
-    media.addEventListener('mouseleave', hideFloatingButton);
-    // Update position on scroll/resize
-    media.addEventListener('timeupdate', () => { if (state.activeMedia === media) positionFloatingButton(media); }, { passive: true });
-  }
-
-  function scanForMedia() {
-    document.querySelectorAll('video, audio').forEach(attachFloatingButton);
-  }
-
-  // === YouTube quality picker ===
-  function showYouTubeQualityPicker(videoUrl) {
-    if (state.qualityPicker) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'zd-quality-overlay';
-    overlay.innerHTML = [
-      '<div class="zd-quality-panel">',
-      '<div class="zd-quality-header">',
-      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
-      'Select Quality</div>',
-      '<div class="zd-quality-list" id="zd-quality-list">',
-      '<div class="zd-quality-loading">Fetching available formats...</div>',
-      '</div>',
-      '<button class="zd-quality-cancel">Cancel</button></div>',
-    ].join('');
-    document.body.appendChild(overlay);
-    state.qualityPicker = overlay;
-
-    overlay.querySelector('.zd-quality-cancel').onclick = () => { overlay.remove(); state.qualityPicker = null; };
-    overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); state.qualityPicker = null; } };
-
-    // Fetch formats from ZenDownload API
-    const list = overlay.querySelector('#zd-quality-list');
-    chrome.runtime.sendMessage({ action: 'probe-formats', url: videoUrl }, (response) => {
-      const formats = response?.formats;
-      if (formats && formats.length > 0) {
-        renderQualityFormats(list, formats, videoUrl, overlay);
-      } else {
-        renderDefaultQualities(list, videoUrl, overlay);
-      }
-    });
-  }
-
-  function renderQualityFormats(list, formats, videoUrl, overlay) {
-    list.innerHTML = '';
-    const groups = {};
-    for (const f of formats) {
-      const key = f.resolution || f.quality_label || f.format_note || 'unknown';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(f);
-    }
-    const sorted = Object.keys(groups).sort((a, b) => {
-      const na = parseInt(a) || 0;
-      const nb = parseInt(b) || 0;
-      return nb - na;
-    });
-    for (const res of sorted) {
-      const group = groups[res];
-      const best = group[0];
-      const label = best.quality_label || best.format_note || res;
-      const ext = best.extension || 'mp4';
-      const item = document.createElement('div');
-      item.className = 'zd-quality-item';
-      item.innerHTML = [
-        '<span class="zd-quality-res">', label, '</span>',
-        '<span class="zd-quality-ext">', ext, '</span>',
-        best.filesize ? '<span class="zd-quality-size">' + (best.filesize / 1024 / 1024).toFixed(1) + ' MB</span>' : '',
-        '<span class="zd-quality-btn">Download</span>',
-      ].join('');
-      item.onclick = () => {
-        chrome.runtime.sendMessage({
-          action: 'send-download', url: videoUrl, pageUrl: window.location.href,
-          title: document.title,
-          extra_meta: { format_id: best.format_id || 'best', source: 'youtube_quality_picker' },
-        });
-        showToast('Sending ' + label + ' to ZenDownload');
-        overlay.remove(); state.qualityPicker = null;
-      };
-      list.appendChild(item);
-    }
-  }
-
-  function renderDefaultQualities(list, videoUrl, overlay) {
-    list.innerHTML = '';
-    const defaults = [
-      { label: 'Best Video+Audio', format: 'best', ext: 'mp4' },
-      { label: '4K (2160p)', format: 'bestvideo[height<=2160]+bestaudio/best[height<=2160]', ext: 'mp4' },
-      { label: '1080p (Full HD)', format: 'bestvideo[height<=1080]+bestaudio/best[height<=1080]', ext: 'mp4' },
-      { label: '720p (HD)', format: 'bestvideo[height<=720]+bestaudio/best[height<=720]', ext: 'mp4' },
-      { label: '480p (SD)', format: 'bestvideo[height<=480]+bestaudio/best[height<=480]', ext: 'mp4' },
-      { label: '360p', format: 'bestvideo[height<=360]+bestaudio/best[height<=360]', ext: 'mp4' },
-      { label: 'Audio Only (MP3)', format: 'bestaudio/best', ext: 'mp3' },
-    ];
-    for (const opt of defaults) {
-      const item = document.createElement('div');
-      item.className = 'zd-quality-item';
-      item.innerHTML = [
-        '<span class="zd-quality-res">', opt.label, '</span>',
-        '<span class="zd-quality-ext">', opt.ext, '</span>',
-        '<span class="zd-quality-btn">Download</span>',
-      ].join('');
-      item.onclick = () => {
-        chrome.runtime.sendMessage({
-          action: 'send-download', url: videoUrl, pageUrl: window.location.href,
-          title: document.title,
-          extra_meta: { format_id: opt.format, source: 'youtube_quality_picker' },
-        });
-        showToast('Sending ' + opt.label + ' to ZenDownload');
-        overlay.remove(); state.qualityPicker = null;
-      };
-      list.appendChild(item);
-    }
-  }
-  }
-
-  // === Toast ===
-  function showToast(message) {
-    const existing = document.querySelector('.zd-toast');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = 'zd-toast';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('zd-toast-visible'));
-    setTimeout(() => {
-      toast.classList.remove('zd-toast-visible');
-      setTimeout(() => toast.remove(), 300);
-    }, 2500);
-  }
-
-  // === Link Panel ===
-  function showLinkPanel() {
-    if (state.panelOpen) return;
-    state.panelOpen = true;
-    const allLinks = dedupeLinks(scanPageLinks());
-    const files = allLinks.filter(l => l.is_file);
-    const pages = allLinks.filter(l => !l.is_file);
-
-    const panel = document.createElement('div');
-    panel.className = 'zd-link-panel';
-    panel.innerHTML = [
-      '<div class="zd-panel-header">',
-      '<div><h3>Page Links</h3><p>', allLinks.length, ' total · ', files.length, ' files · ', pages.length, ' pages</p></div>',
-      '<button class="zd-panel-close">&times;</button></div>',
-      '<div class="zd-panel-filters">',
-      '<button class="zd-filter active" data-filter="all">All</button>',
-      '<button class="zd-filter" data-filter="files">Files</button>',
-      '<button class="zd-filter" data-filter="pages">Pages</button>',
-      '<button class="zd-panel-download-all">Download all files</button></div>',
-      '<div class="zd-panel-list"></div>',
-    ].join('');
-    document.body.appendChild(panel);
-
-    const list = panel.querySelector('.zd-panel-list');
-    function renderList(filter = 'all') {
-      const items = filter === 'files' ? files : filter === 'pages' ? pages : allLinks;
-      if (items.length === 0) { list.innerHTML = '<div class="zd-empty">No links found</div>'; return; }
-      const fragment = document.createDocumentFragment();
-      for (const link of items) {
-        const div = document.createElement('div');
-        div.className = `zd-link-item ${link.is_file ? 'zd-file' : 'zd-page'}`;
-        div.innerHTML = [
-          '<input type="checkbox"', link.is_file ? ` data-url="${escapeAttr(link.url)}" checked` : ' disabled', '>',
-          '<div class="zd-link-info">',
-          '<div class="zd-link-text">', escapeHtml(link.text || link.url), '</div>',
-          '<div class="zd-link-url">', escapeHtml(link.url), '</div></div>',
-          link.is_file ? '<span class="zd-link-type">' + (link.file_type || '') + '</span>' : '<span class="zd-link-external">\u2197</span>',
-        ].join('');
-        fragment.appendChild(div);
-      }
-      list.innerHTML = '';
-      list.appendChild(fragment);
-    }
-    renderList();
-
-    panel.querySelector('.zd-panel-close').onclick = () => {
-      panel.classList.remove('zd-panel-open');
-      setTimeout(() => { panel.remove(); state.panelOpen = false; }, 250);
-    };
-    panel.querySelectorAll('.zd-filter').forEach(btn => {
-      btn.onclick = () => {
-        panel.querySelectorAll('.zd-filter').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderList(btn.dataset.filter);
-      };
-    });
-    panel.querySelector('.zd-panel-download-all').onclick = () => {
-      const checked = list.querySelectorAll('input[type=checkbox]:checked');
-      const urls = Array.from(checked).map(c => c.dataset.url).filter(Boolean);
-      if (urls.length === 0) { showToast('No files selected'); return; }
-      chrome.runtime.sendMessage({ action: 'send-batch', urls, pageUrl: window.location.href });
-      showToast(`Sending ${urls.length} files to ZenDownload`);
-    };
-    requestAnimationFrame(() => panel.classList.add('zd-panel-open'));
-  }
-
-  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-  function escapeAttr(s) { return String(s).replace(/[&"<>']/g, c => ({ '&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;' }[c])); }
-
-  // === Init ===
-  function init() {
-    scanForMedia();
-    scanPageLinks();
-    const observer = new MutationObserver(() => scanForMedia());
-    observer.observe(document.body, { childList: true, subtree: true });
-    state.scanInterval = setInterval(scanPageLinks, 3000);
-    // Update button position on scroll
-    window.addEventListener('scroll', () => { if (state.activeMedia && state.floatingButton) positionFloatingButton(state.activeMedia); }, { passive: true });
-    window.addEventListener('resize', () => { if (state.activeMedia && state.floatingButton) positionFloatingButton(state.activeMedia); }, { passive: true });
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  function init() { scan(); new MutationObserver(scan).observe(document.documentElement,{childList:true,subtree:true}); ST.scanInt = setInterval(scan,2500); window.addEventListener('scroll',()=>{if(ST.activeEl&&ST.fbtn)posBtn(ST.activeEl);},{passive:true}); window.addEventListener('resize',()=>{if(ST.activeEl&&ST.fbtn)posBtn(ST.activeEl);},{passive:true}); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
