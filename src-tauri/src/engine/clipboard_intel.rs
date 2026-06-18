@@ -160,7 +160,7 @@ impl ClipboardIntel {
         let mut detected = self.detected.lock().await;
         let now = chrono::Utc::now().timestamp();
         let mut new_entries = Vec::new();
-        for (url, pattern_name, category, confidence) in urls {
+        for (url, pattern_name, _category, confidence) in urls {
             if cfg.ignore_patterns.iter().any(|p| url.contains(p)) {
                 continue;
             }

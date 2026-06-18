@@ -73,4 +73,8 @@ jobs:
       - name: Frontend tests
         run: |
           bun install
-          bun run test --if-present
+          if find src -name '*.test.*' -o -name '*.spec.*' 2>/dev/null | grep -q .; then
+            bun run test
+          else
+            echo "No frontend tests found, skipping."
+          fi
