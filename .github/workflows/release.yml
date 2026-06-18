@@ -26,12 +26,12 @@ jobs:
             ext: deb
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: dmg
-            ext: dmg
+            artifact: macos
+            ext: app
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact: dmg
-            ext: dmg
+            artifact: macos
+            ext: app
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: msi
@@ -64,7 +64,12 @@ jobs:
         run: bun install
 
       - name: Build app
-        run: bun run tauri build --bundles ${{ matrix.artifact }}
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            bun run tauri build --bundles app
+          else
+            bun run tauri build --bundles ${{ matrix.artifact }}
+          fi
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
