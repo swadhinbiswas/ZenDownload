@@ -39,6 +39,7 @@ jobs:
           workspaces: src-tauri -> target
 
       - name: Install JS deps
+        shell: bash
         run: |
           for i in 1 2 3; do
             bun install --frozen-lockfile && break
