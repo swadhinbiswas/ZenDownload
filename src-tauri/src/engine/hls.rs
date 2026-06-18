@@ -214,7 +214,6 @@ pub async fn download_hls(
     threads: usize,
 ) -> Result<String, String> {
     use std::sync::atomic::{AtomicU64, Ordering};
-    use tokio::io::AsyncWriteExt;
     use tokio::sync::Semaphore;
 
     let segments = &metadata.segments;

@@ -155,7 +155,7 @@ fn extract_quality(tvg_id: &str) -> Option<String> {
 fn region_for_country(code: &str) -> &'static str {
     match code.to_uppercase().as_str() {
         "US" | "CA" | "MX" | "GT" | "BZ" | "HN" | "SV" | "NI" | "CR" | "PA" | "CU" | "DO" |
-        "HT" | "JM" | "TT" | "BB" | "BS" | "PR" | "GY" | "SR" | "BS" => "Americas",
+        "HT" | "JM" | "TT" | "BB" | "BS" | "PR" | "GY" | "SR" => "Americas",
         "BR" | "AR" | "CL" | "CO" | "PE" | "UY" | "PY" | "BO" | "EC" | "VE" => "Americas",
         "GB" | "UK" | "IE" | "FR" | "DE" | "ES" | "PT" | "IT" | "NL" | "BE" | "LU" | "CH" |
         "AT" | "SE" | "NO" | "DK" | "FI" | "IS" | "PL" | "CZ" | "SK" | "RO" | "BG" | "GR" |
@@ -173,7 +173,7 @@ fn region_for_country(code: &str) -> &'static str {
     }
 }
 
-fn extract_language_from_codes(lang_codes: &[String], countries: &HashMap<String, CountryInfo>) -> Option<String> {
+fn extract_language_from_codes(lang_codes: &[String], _countries: &HashMap<String, CountryInfo>) -> Option<String> {
     use super::m3u::LANG_MAP; // we'll add a public map in m3u.rs
     for code in lang_codes {
         if let Some(name) = LANG_MAP.get(code.as_str()) {

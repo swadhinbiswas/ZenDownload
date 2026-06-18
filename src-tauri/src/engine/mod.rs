@@ -894,7 +894,7 @@ impl DownloadEngine {
             } else {
                 // Torrent not in memory (app restarted) — re-add it to session
                 drop(te);
-                let mut te = self.torrent_engine.write().await;
+                let te = self.torrent_engine.write().await;
                 if record.url.starts_with("magnet:") {
                     let (_, trackers) = parse_magnet(&record.url);
                     te.add_magnet(record.url.clone(), record.save_path.clone(), id.clone(), trackers).await?;

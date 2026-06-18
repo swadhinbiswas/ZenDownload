@@ -231,7 +231,7 @@ async fn run_download_loop(ctx: &Arc<DownloadContext>) -> Result<(), Box<dyn std
             if let Some(s) = size {
                 query = query.bind(s);
             }
-            if let Some(ref ct) = content_type {
+        if let Some(ref ct) = content_type {
                 query = query.bind(ct);
             }
             query = query.bind(&ctx.id);
@@ -769,7 +769,7 @@ async fn run_multi_thread_with_path(ctx: &Arc<DownloadContext>, total_size: i64,
                 // No per-chunk DB query — resume offsets are handled by chunk.start_byte
                 let mut retries = 5;  // Increased retries since semaphore prevents 429 storms
                 let mut success = false;
-                let chunk_start_time = std::time::Instant::now();
+                let _chunk_start_time = std::time::Instant::now();
 
                 println!("[{}] Acquired chunk #{}: bytes {}-{} ({} KB)", 
                     worker_id, chunk.index, chunk.start_byte, chunk.end_byte,

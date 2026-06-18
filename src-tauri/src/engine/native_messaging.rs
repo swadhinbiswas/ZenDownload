@@ -70,7 +70,7 @@ pub async fn start_native_messaging_listener(app: AppHandle) {
                 }
             }
             "sniffed_url" => {
-                if let Some(url) = &msg.url {
+                if let Some(_url) = &msg.url {
                     let _ = app.emit("browser-url-sniffed", &msg);
                 }
             }

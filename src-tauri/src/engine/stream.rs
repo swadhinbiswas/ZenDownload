@@ -1095,10 +1095,25 @@ pub async fn start_stream_download(ctx: Arc<crate::engine::http::DownloadContext
     command.arg(&ctx.url);
 
     // Spawn process with streaming stdout/stderr for real-time progress
-    let mut child = match command.stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .process_group(0)  // Make child its own process group leader (kill -<pid> kills group)
-        .spawn()
+    let cmd = command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    // Make child its own process group leader (kill -<pid> kills group).
+    // `process_group` lives on std::process::Command (Unix-only), so we use
+    // `pre_exec` on the tokio command to call setsid() after fork() / before exec().
+    #[cfg(unix)]
+    unsafe {
+        cmd.pre_exec(|| {
+            extern "C" { fn setsid() -> i32; }
+            if setsid() < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+
+    let mut child = match cmd.spawn()
     {
         Ok(c) => {
             // Register the child PID so we can kill it on cancel/delete

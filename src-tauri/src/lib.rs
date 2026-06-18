@@ -1472,7 +1472,7 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
-                use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+                use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 
                 let show_i = MenuItem::with_id(app, "show", "Show ZenDownload", true, None::<&str>)?;
                 let hide_i = MenuItem::with_id(app, "hide", "Hide to Tray", true, None::<&str>)?;
