@@ -18,7 +18,7 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: AppImage
+            artifact: appimage
             ext: AppImage
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
@@ -64,6 +64,7 @@ jobs:
         run: bun install
 
       - name: Build app
+        shell: bash
         run: |
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
             bun run tauri build --bundles app
