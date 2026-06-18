@@ -105,13 +105,7 @@
     "deep-link": {
       "desktop": {
         "schemes": ["zendown"]
-      },
-      "mobile": [
-        {
-          "host": "add",
-          "pathPrefix": [""]
-        }
-      ]
+      }
     }
   }
 }

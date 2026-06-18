@@ -145,39 +145,6 @@ extension/                    # Browser extension (Chrome/Firefox)
 - **Rust**: Follow standard conventions. Use `?` for error propagation. Prefer `if let` over `match` for single patterns.
 - **CSS**: Tailwind utility classes only in components. Custom tokens in `src/index.css`.
 
-## Mobile (Android) Development
-
-The Android build lives under `src-tauri/gen/android/`. Most of the Tauri scaffold is auto-generated; customisations live in:
-
-- `src-tauri/gen/android/app/build.gradle.kts` — signing, splits, bundle config
-- `src-tauri/gen/android/app/src/main/AndroidManifest.xml` — permissions, deep links
-- `src-tauri/gen/android/app/src/main/res/xml/` — backup, extraction, network security rules
-- `src-tauri/gen/android/app/src/main/java/com/zendownload/app/MainActivity.kt`
-
-### Building locally
-
-```bash
-# One-time: generate a keystore (see playstore/README.md)
-./scripts/build-android.sh
-# → src-tauri/gen/android/app/build/outputs/bundle/release/app-release.aab
-```
-
-### Verifying Play Store assets
-
-The Play Store requires PNG assets. Convert from SVG before each release:
-
-```bash
-sudo apt install librsvg2-bin
-rsvg-convert -w 512  -h 512  assets/playstore/icon-512.svg         > assets/playstore/icon-512.png
-rsvg-convert -w 1024 -h 500  assets/playstore/feature-graphic.svg  > assets/playstore/feature-graphic.png
-for i in 1 2 3 4 5 6 7 8; do
-  rsvg-convert -w 540 -h 960 assets/playstore/screenshot-phone-$i.svg \
-    > assets/playstore/screenshot-phone-$i.png
-done
-```
-
-The CI workflow `.github/workflows/android.yml` does this automatically.
-
 ## Testing
 
 ```bash

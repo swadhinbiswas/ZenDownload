@@ -1428,7 +1428,6 @@ async fn get_recent_analytics(limit: usize, engine: tauri::State<'_, DownloadEng
     Ok(engine.analytics.get_recent_stats(limit).await)
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())

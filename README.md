@@ -20,8 +20,6 @@
     &nbsp;
     <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux"/>
     &nbsp;
-    <img src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android"/>
-    &nbsp;
     <img src="https://img.shields.io/badge/Tauri-2-FFC131?style=flat-square&logo=tauri&logoColor=black" alt="Tauri 2"/>
     &nbsp;
     <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19"/>
@@ -464,54 +462,6 @@ Everything is local. No telemetry, no analytics, no cloud accounts. The app talk
 
 **Can I theme it?**  
 12 accent colors, 3 background densities, adjustable corner radius, font size presets, compact mode. Plus full dark/light theme support.
-
-<br/>
-
-## Mobile (Android)
-
-ZenDownload ships a native Android build via Tauri 2. Same engine, same UI, same plugin system — just sized for your phone.
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-**Why it works on mobile**
-
-- Native WebView shell — fast cold start, tiny install size
-- Background downloads via foreground service
-- `zendown://` deep link opens the app with a download URL
-- `magnet:?xt=...` URLs handled by the system
-- `READ_MEDIA_*` permissions for saving to public folders
-- Battery-optimisation exemption is opt-in (Android default behaviour)
-- Adaptive icon, dark theme, 12 accent colors — same look as desktop
-
-</td>
-<td width="50%" valign="top">
-
-**Coming to Play Store**
-
-The Android build is configured for Play Store publishing. The full publishing guide, asset assets, listing metadata, and a signed-AAB build script live in [`playstore/`](playstore/).
-
-To build a signed AAB locally:
-
-```bash
-# Generate keystore + keystore.properties (one time, see playstore/README.md)
-./scripts/build-android.sh
-# → src-tauri/gen/android/app/build/outputs/bundle/release/app-release.aab
-```
-
-</td>
-</tr>
-</table>
-
-### Screenshots
-
-<div align="center">
-  <img src="assets/playstore/screenshot-phone-1.svg" alt="Downloads" width="220"/>
-  <img src="assets/playstore/screenshot-phone-3.svg" alt="Torrents" width="220"/>
-  <img src="assets/playstore/screenshot-phone-2.svg" alt="Music" width="220"/>
-  <img src="assets/playstore/screenshot-phone-4.svg" alt="Speed Test" width="220"/>
-</div>
 
 <br/>
 
